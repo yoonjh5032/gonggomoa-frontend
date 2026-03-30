@@ -77,6 +77,18 @@ const PublicAPI = (function() {
     return request('GET', '/admin/inquiries?' + qs.toString());
   }
 
+     /* ── 페이지뷰 수집 ── */
+  async function trackPageView(data) {
+    return request('POST', '/analytics/pageview', data);
+  }
+
+  /* ── 관리자 방문자 통계 ── */
+  async function getAdminVisitorStats(days) {
+    const qs = new URLSearchParams();
+    if (days) qs.set('days', days);
+    return request('GET', '/analytics/visitor-stats' + (qs.toString() ? '?' + qs.toString() : ''));
+  }
+
   return {
     API_BASE,
     request,
@@ -85,6 +97,8 @@ const PublicAPI = (function() {
     getNoticesByMonth,
     getNotice,
     createInquiry,
-    getAdminInquiries
+    getAdminInquiries,
+    trackPageView,
+    getAdminVisitorStats
   };
 })();
