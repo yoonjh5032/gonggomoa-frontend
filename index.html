@@ -569,74 +569,69 @@
 </button>
 
 <!-- 문의하기 모달 -->
-<div class="inquiry-modal" id="inquiry-modal" style="display:none">
-  <div class="inquiry-modal-backdrop" id="inquiry-modal-close"></div>
+<div id="inquiry-modal" class="inquiry-modal">
+  <div class="inquiry-modal-backdrop"></div>
 
-  <div class="inquiry-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="inquiry-modal-title">
-    <div class="inquiry-modal-head">
-      <div>
-        <h2 id="inquiry-modal-title" class="inquiry-modal-title">
-          <i class="fas fa-headset"></i> 문의하기
-        </h2>
+  <div class="inquiry-modal-dialog">
+    <div class="inquiry-modal-header">
+      <div class="inquiry-modal-title-wrap">
+        <h2 class="inquiry-modal-title">문의하기</h2>
         <p class="inquiry-modal-desc">서비스 문의, 광고 문의, 오류 제보를 남겨주세요.</p>
       </div>
-      <button class="inquiry-close-btn" type="button" id="inquiry-close-btn" aria-label="팝업 닫기">
-        <i class="fas fa-xmark"></i>
-      </button>
+      <button type="button" class="inquiry-modal-close" aria-label="닫기">×</button>
     </div>
 
-    <form class="inquiry-form" id="inquiry-form">
+    <form id="inquiry-form" class="inquiry-form">
       <div class="inquiry-form-row">
-        <div class="inquiry-form-group">
-          <label class="inquiry-label">문의 유형</label>
-          <select class="inquiry-input" name="category">
-            <option value="general">일반문의</option>
-            <option value="advertisement">광고문의</option>
-            <option value="bug">오류제보</option>
-            <option value="etc">기타</option>
-          </select>
-        </div>
-
-        <div class="inquiry-form-group">
-          <label class="inquiry-label">이름</label>
-          <input class="inquiry-input" type="text" name="name" placeholder="이름을 입력하세요">
-        </div>
+        <label class="inquiry-form-label" for="inquiry-category">문의 유형</label>
+        <select id="inquiry-category" class="inquiry-form-select">
+          <option value="general">일반문의</option>
+          <option value="service">서비스 문의</option>
+          <option value="advertisement">광고 문의</option>
+          <option value="bug">오류 제보</option>
+          <option value="partnership">제휴 문의</option>
+          <option value="other">기타</option>
+        </select>
       </div>
 
       <div class="inquiry-form-row">
-        <div class="inquiry-form-group">
-          <label class="inquiry-label">이메일</label>
-          <input class="inquiry-input" type="email" name="email" placeholder="example@email.com">
-        </div>
-
-        <div class="inquiry-form-group">
-          <label class="inquiry-label">연락처</label>
-          <input class="inquiry-input" type="text" name="phone" placeholder="010-0000-0000 (선택)">
-        </div>
+        <label class="inquiry-form-label" for="inquiry-name">이름</label>
+        <input id="inquiry-name" type="text" class="inquiry-form-control" placeholder="이름을 입력하세요">
       </div>
 
-      <div class="inquiry-form-group">
-        <label class="inquiry-label">제목</label>
-        <input class="inquiry-input" type="text" name="title" placeholder="문의 제목을 입력하세요">
+      <div class="inquiry-form-row">
+        <label class="inquiry-form-label" for="inquiry-email">이메일</label>
+        <input id="inquiry-email" type="email" class="inquiry-form-control" placeholder="example@email.com">
       </div>
 
-      <div class="inquiry-form-group">
-        <label class="inquiry-label">문의 내용</label>
-        <textarea class="inquiry-input inquiry-textarea" name="message" placeholder="문의하실 내용을 입력해주세요."></textarea>
+      <div class="inquiry-form-row">
+        <label class="inquiry-form-label" for="inquiry-phone">연락처</label>
+        <input id="inquiry-phone" type="text" class="inquiry-form-control" placeholder="010-0000-0000 (선택)">
       </div>
 
-      <label class="inquiry-check">
-        <input type="checkbox" name="agree">
-        <span>개인정보 수집 및 문의 응대 목적의 이용에 동의합니다.</span>
-      </label>
+      <div class="inquiry-form-row">
+        <label class="inquiry-form-label" for="inquiry-title">제목</label>
+        <input id="inquiry-title" type="text" class="inquiry-form-control" placeholder="문의 제목을 입력하세요">
+      </div>
 
-      <div class="inquiry-actions">
-        <button type="button" class="inquiry-btn inquiry-btn-light" id="inquiry-cancel-btn">취소</button>
-        <button type="submit" class="inquiry-btn inquiry-btn-primary">문의 접수</button>
+      <div class="inquiry-form-row">
+        <label class="inquiry-form-label" for="inquiry-message">문의 내용</label>
+        <textarea id="inquiry-message" class="inquiry-form-textarea" placeholder="문의하실 내용을 입력해주세요."></textarea>
+      </div>
+
+      <div class="inquiry-agree">
+        <input id="inquiry-agree" type="checkbox">
+        <label for="inquiry-agree">개인정보 수집 및 문의 응대 목적의 이용에 동의합니다.</label>
+      </div>
+
+      <div class="inquiry-form-actions">
+        <button type="button" class="inquiry-btn inquiry-btn-cancel">취소</button>
+        <button type="submit" class="inquiry-btn inquiry-btn-submit">문의 접수</button>
       </div>
     </form>
   </div>
 </div>
+
 
 <script src="js/public-auth.js"></script>
 <script src="js/feedback.js"></script>
