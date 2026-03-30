@@ -173,7 +173,7 @@ button { cursor: pointer; font-family: inherit; }
 }
 .source-bar-inner {
   max-width: 1200px; margin: 0 auto; padding: 0 20px;
-  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap;
 }
 .src-chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -193,6 +193,25 @@ button { cursor: pointer; font-family: inherit; }
    MAIN & SECTIONS
 ═════════════════════════════ */
 .pub-main { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
+
+/* 홈 광고 배너 */
+.home-ad-section {
+  width: 100%;
+  max-width: 840px;
+  margin: 20px auto 24px;
+}
+.home-ad-banner {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 16px;
+}
+.home-ad-banner-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
 .section-block { margin-bottom: 40px; }
 .section-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -851,6 +870,10 @@ button { cursor: pointer; font-family: inherit; }
   }
   .hero-title { font-size: 1.5rem; }
   .card-grid { grid-template-columns: 1fr; }
+  .home-ad-section {
+    max-width: calc(100% - 24px);
+    margin: 16px auto 20px;
+  }
 }
 @media (max-width: 480px) {
   .pub-header-inner { min-height: 56px; }
