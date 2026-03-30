@@ -102,3 +102,4 @@ const PublicAPI = (function() {
     getAdminVisitorStats
   };
 })();
+window.PublicAPI = PublicAPI;
