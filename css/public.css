@@ -30,10 +30,16 @@ button { cursor: pointer; font-family: inherit; }
   display: flex; align-items: center; justify-content: space-between;
 }
 .pub-logo {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 1.15rem; font-weight: 800; color: #fff;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
-.pub-logo i { font-size: 1.3rem; }
+.pub-logo-image {
+  display: block;
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+}
 
 .pub-nav { display: flex; gap: 4px; }
 .pub-nav-link {
@@ -44,28 +50,40 @@ button { cursor: pointer; font-family: inherit; }
 }
 .pub-nav-link:hover { background: rgba(255,255,255,.15); color: #fff; }
 
-.pub-header-right { display: flex; align-items: center; gap: 8px; }
+.pub-header-right { display: flex; align-items: center; gap: 14px; }
+.header-guest-group,
+.header-user-group {
+  display: flex; align-items: center; gap: 12px;
+}
 
 .pub-btn-login,
 .pub-btn-register {
-  padding: 6px 14px; border-radius: 8px;
-  font-size: .82rem; font-weight: 600;
-  display: inline-flex; align-items: center; gap: 5px;
-  transition: background .15s;
+  padding: 8px 16px; border-radius: 10px;
+  font-size: .82rem; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 96px;
+  transition: background .15s, transform .15s, box-shadow .15s;
 }
 .pub-btn-login {
   background: rgba(255,255,255,.15); color: #fff;
   border: 1px solid rgba(255,255,255,.25);
 }
-.pub-btn-login:hover { background: rgba(255,255,255,.28); }
+.pub-btn-login:hover {
+  background: rgba(255,255,255,.28);
+  transform: translateY(-1px);
+}
 .pub-btn-register {
   background: #fbbf24; color: #92400e;
   border: none;
+  box-shadow: 0 6px 16px rgba(251,191,36,.25);
 }
-.pub-btn-register:hover { background: #f59e0b; }
+.pub-btn-register:hover {
+  background: #f59e0b;
+  transform: translateY(-1px);
+}
 
 .header-user-group {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; align-items: center; gap: 12px;
 }
 .header-user-name {
   color: #fff; font-size: .85rem; font-weight: 600;
@@ -302,14 +320,37 @@ button { cursor: pointer; font-family: inherit; }
    RESPONSIVE
 ═════════════════════════════ */
 @media (max-width: 768px) {
-  .pub-header-inner { padding: 0 12px; }
+  .pub-header-inner {
+    padding: 10px 12px;
+    height: auto;
+    min-height: 60px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pub-logo-image { height: 30px; }
   .pub-nav { display: none; }
+  .pub-header-right {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .header-guest-group,
+  .header-user-group {
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .pub-btn-login,
+  .pub-btn-register {
+    min-width: auto;
+    padding: 8px 14px;
+  }
   .hero-title { font-size: 1.5rem; }
   .card-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 480px) {
-  .pub-header-inner { height: 50px; }
-  .pub-logo span { display: none; }
+  .pub-header-inner { min-height: 50px; }
+  .pub-logo-image { height: 26px; }
   .hero { padding: 36px 16px 32px; }
   .hero-title { font-size: 1.3rem; }
   .source-bar-inner { gap: 8px; }
