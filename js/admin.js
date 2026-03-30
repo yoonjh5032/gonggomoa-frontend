@@ -8,7 +8,8 @@
     q: '',
     items: [],
     selectedId: null,
-    me: null
+    me: null,
+    visitorDays: 14
   };
 
   function $(id) { return document.getElementById(id); }
@@ -187,6 +188,105 @@
     }
   }
 
+  function renderVisitorSummary(summary) {
+    $('vis-today-views').textContent = (summary.todayViews || 0).toLocaleString();
+    $('vis-today-visitors').textContent = (summary.todayVisitors || 0).toLocaleString();
+    $('vis-total-views').textContent = (summary.totalViews || 0).toLocaleString();
+    $('vis-total-visitors').textContent = (summary.totalVisitors || 0).toLocaleString();
+  }
+
+  function renderVisitorDaily(daily) {
+    var wrap = $('vis-daily');
+    if (!daily || !daily.length) {
+      wrap.innerHTML = '<div class="admin-empty">집계 데이터가 없습니다.</div>';
+      return;
+    }
+
+    var maxViews = Math.max.apply(null, daily.map(function(item) { return item.views || 0; }));
+    if (!maxViews) maxViews = 1;
+
+    wrap.innerHTML = daily.map(function(item) {
+      var ratio = Math.max(6, Math.round(((item.views || 0) / maxViews) * 100));
+      return '' +
+        '<div style="display:grid;grid-template-columns:90px 1fr 110px;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid #f3f4f6;">' +
+          '<strong style="font-size:.82rem;color:#374151;">' + esc(item.date) + '</strong>' +
+          '<div style="height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden;">' +
+            '<div style="width:' + ratio + '%;height:100%;background:linear-gradient(90deg,#2563eb,#60a5fa);"></div>' +
+          '</div>' +
+          '<span style="font-size:.8rem;color:#6b7280;text-align:right;">PV ' + (item.views || 0) + ' / UV ' + (item.visitors || 0) + '</span>' +
+        '</div>';
+    }).join('');
+  }
+
+  function renderTopPages(list) {
+    var wrap = $('vis-top-pages');
+    if (!list || !list.length) {
+      wrap.innerHTML = '<div class="admin-empty">인기 페이지 데이터가 없습니다.</div>';
+      return;
+    }
+
+    wrap.innerHTML =
+      '<div class="admin-table-wrap">' +
+        '<table class="admin-table">' +
+          '<thead><tr><th>순위</th><th>경로</th><th>페이지뷰</th></tr></thead>' +
+          '<tbody>' +
+            list.map(function(item, idx) {
+              return '<tr>' +
+                '<td>' + (idx + 1) + '</td>' +
+                '<td style="word-break:break-all;">' + esc(item.path || '/') + '</td>' +
+                '<td>' + (item.views || 0).toLocaleString() + '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
+  function renderRecentVisits(list) {
+    var wrap = $('vis-recent');
+    if (!list || !list.length) {
+      wrap.innerHTML = '<div class="admin-empty">최근 방문 기록이 없습니다.</div>';
+      return;
+    }
+
+    wrap.innerHTML =
+      '<div class="admin-table-wrap">' +
+        '<table class="admin-table">' +
+          '<thead><tr><th>시간</th><th>경로</th><th>리퍼러</th><th>세션</th></tr></thead>' +
+          '<tbody>' +
+            list.map(function(item) {
+              return '<tr>' +
+                '<td>' + esc(fmtDate(item.createdAt)) + '</td>' +
+                '<td style="word-break:break-all;">' + esc(item.path || '/') + '</td>' +
+                '<td style="word-break:break-all;">' + esc(item.referrer || '-') + '</td>' +
+                '<td>' + esc(item.session_id || '-') + '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
+  async function loadVisitorStats() {
+    try {
+      $('vis-daily').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+      $('vis-top-pages').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+      $('vis-recent').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+
+      var resp = await PublicAPI.getAdminVisitorStats(state.visitorDays);
+
+      renderVisitorSummary(resp.summary || {});
+      renderVisitorDaily(resp.daily || []);
+      renderTopPages(resp.topPages || []);
+      renderRecentVisits(resp.recent || []);
+    } catch (err) {
+      $('vis-daily').innerHTML = '<div class="admin-empty">' + esc(err.message || '방문자 통계를 불러오지 못했습니다.') + '</div>';
+      $('vis-top-pages').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
+      $('vis-recent').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
+      if (typeof Feedback !== 'undefined') Feedback.error(err.message || '방문자 통계 조회 실패');
+    }
+  }
+
   async function boot() {
     if (!PublicAuth.isLoggedIn()) {
       window.location.href = 'login.html';
@@ -212,6 +312,7 @@
         btn.addEventListener('click', function() {
           showSection(btn.dataset.section);
           if (btn.dataset.section === 'inquiries') loadInquiries();
+          if (btn.dataset.section === 'stats') loadVisitorStats();
         });
       });
 
