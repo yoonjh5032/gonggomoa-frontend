@@ -735,6 +735,54 @@
   var calLoading = false;
   var selectedDate = null;
 
+   /* 월별 캐시 */
+  var calCache = {};        // { '2026-04': {...groupedData} }
+  var calPrefetching = {};  // 중복 프리패치 방지
+
+  function calCacheKey(year, month) {
+    return year + '-' + String(month).padStart(2, '0');
+  }
+
+  function normalizeYearMonth(year, month) {
+    var y = year;
+    var m = month;
+
+    while (m > 12) {
+      y += 1;
+      m -= 12;
+    }
+    while (m < 1) {
+      y -= 1;
+      m += 12;
+    }
+
+    return { year: y, month: m };
+  }
+
+  async function fetchCalendarMonth(year, month) {
+    return await PublicAPI.getNoticesByMonth(year, month);
+  }
+
+  function prefetchCalendarMonth(year, month) {
+    var normalized = normalizeYearMonth(year, month);
+    var key = calCacheKey(normalized.year, normalized.month);
+
+    if (calCache[key] || calPrefetching[key]) return;
+
+    calPrefetching[key] = true;
+
+    fetchCalendarMonth(normalized.year, normalized.month)
+      .then(function(data) {
+        calCache[key] = data || {};
+      })
+      .catch(function() {
+        /* 프리패치는 실패해도 무시 */
+      })
+      .finally(function() {
+        delete calPrefetching[key];
+      });
+  }
+
   function initCalendar() {
     renderDowRow();
     refreshCal();
@@ -753,15 +801,54 @@
   async function refreshCal() {
     if (calLoading) return;
     calLoading = true;
+
+    var key = calCacheKey(calYear, calMonth);
+
     document.getElementById('cal-days-grid').innerHTML =
       '<div style="grid-column:1/-1;text-align:center;padding:30px;color:#9ca3af"><i class="fas fa-spinner" style="animation:spin .8s linear infinite;display:inline-block"></i> 로딩 중...</div>';
+
     document.getElementById('cal-month-label').textContent = calYear + '년 ' + calMonth + '월';
+
     try {
-      calData = await PublicAPI.getNoticesByMonth(calYear, calMonth);
-    } catch(e) { calData = {}; }
+      if (calCache[key]) {
+        calData = calCache[key];
+      } else {
+        calData = await fetchCalendarMonth(calYear, calMonth);
+        calCache[key] = calData || {};
+      }
+    } catch (e) {
+      calData = {};
+    }
+
     renderCalGrid();
     calLoading = false;
+
+    /* 다음 달 / 이전 달 미리 받아두기 */
+    prefetchCalendarMonth(calYear, calMonth + 1);
+    prefetchCalendarMonth(calYear, calMonth - 1);
   }
+
+  /* 필요 시 캐시 수동 초기화 */
+  window.clearCalendarCache = function() {
+    calCache = {};
+    calPrefetching = {};
+  };
+
+  /* D-day 계산 헬퍼 */
+  function calcDday(dateStr) {
+    if (!dateStr) return null;
+    var today = new Date(); today.setHours(0,0,0,0);
+    var target = new Date(dateStr.slice(0,10)); target.setHours(0,0,0,0);
+    return Math.round((target - today) / 86400000);
+  }
+
+  function ddayLabel(diff) {
+    if (diff === null) return '';
+    if (diff === 0)  return '<span class="cal-dday-label d0"><i class="fas fa-circle-exclamation"></i> D-day</span>';
+    if (diff > 0)    return '<span class="cal-dday-label ' + (diff <= 3 ? 'd1' : (diff <= 7 ? 'd3' : 'dn')) + '">D-' + diff + '</span>';
+    return '<span class="cal-dday-label dn">마감</span>';
+  }
+</script>
 
   /* D-day 계산 헬퍼 */
   function calcDday(dateStr) {
