@@ -313,17 +313,17 @@
       <a href="#" class="pub-nav-link" id="nav-cal-btn" onclick="showView('calendar');return false;">
         <i class="fas fa-calendar-days"></i> 캘린더
       </a>
-      <a href="public/notices.html" class="pub-nav-link">
+      <a href="notices.html" class="pub-nav-link">
         <i class="fas fa-list-ul"></i> 전체보기
       </a>
     </nav>
     <div class="pub-header-right">
       <!-- 비로그인 상태 -->
       <div class="header-guest-group" id="header-guest-group">
-        <a href="public/login.html" class="pub-btn-login" id="header-login-btn">
+        <a href="login.html" class="pub-btn-login" id="header-login-btn">
           <i class="fas fa-right-to-bracket"></i> 로그인
         </a>
-        <a href="public/login.html?tab=register" class="pub-btn-register" id="header-register-btn">
+        <a href="login.html?tab=register" class="pub-btn-register" id="header-register-btn">
           <i class="fas fa-user-plus"></i> 회원가입
         </a>
       </div>
@@ -334,7 +334,7 @@
           <i class="fas fa-user-circle"></i>
           <span id="header-nickname">닉네임</span>
         </div>
-        <a href="public/mypage.html" class="pub-btn-mypage" id="header-mypage-btn">
+        <a href="mypage.html" class="pub-btn-mypage" id="header-mypage-btn">
           <i class="fas fa-id-card"></i> 마이페이지
         </a>
         <button class="pub-btn-logout" id="header-logout-btn" onclick="PublicAuth.logout()">
@@ -372,15 +372,15 @@
 <!-- ── 소스 통계 바 (홈 뷰) ── -->
 <div class="source-bar" id="source-bar-section">
   <div class="source-bar-inner">
-    <a href="public/notices.html?source=g2b_api" class="src-chip src-g2b">
+    <a href="notices.html?source=g2b_api" class="src-chip src-g2b">
       <i class="fas fa-database"></i> 나라장터
       <span class="src-chip-count" id="src-count-g2b">-</span>
     </a>
-    <a href="public/notices.html?source=seoul_board" class="src-chip src-seoul">
+    <a href="notices.html?source=seoul_board" class="src-chip src-seoul">
       <i class="fas fa-city"></i> 서울시
       <span class="src-chip-count" id="src-count-seoul">-</span>
     </a>
-    <a href="public/notices.html?source=seoul_contract" class="src-chip src-contract">
+    <a href="notices.html?source=seoul_contract" class="src-chip src-contract">
       <i class="fas fa-file-contract"></i> 계약마당
       <span class="src-chip-count" id="src-count-contract">-</span>
     </a>
@@ -420,22 +420,22 @@
         <h2 class="section-title"><i class="fas fa-tags" style="color:#8b5cf6"></i> 유형별 공고</h2>
       </div>
       <div class="type-grid">
-        <a href="public/notices.html?type=공사" class="type-card t-공사">
+        <a href="notices.html?type=공사" class="type-card t-공사">
           <div class="type-icon"><i class="fas fa-hard-hat"></i></div>
           <div class="type-name">공사</div>
           <div class="type-cnt" id="cnt-공사">-</div>
         </a>
-        <a href="public/notices.html?type=용역" class="type-card t-용역">
+        <a href="notices.html?type=용역" class="type-card t-용역">
           <div class="type-icon"><i class="fas fa-handshake"></i></div>
           <div class="type-name">용역</div>
           <div class="type-cnt" id="cnt-용역">-</div>
         </a>
-        <a href="public/notices.html?type=물품" class="type-card t-물품">
+        <a href="notices.html?type=물품" class="type-card t-물품">
           <div class="type-icon"><i class="fas fa-box"></i></div>
           <div class="type-name">물품</div>
           <div class="type-cnt" id="cnt-물품">-</div>
         </a>
-        <a href="public/notices.html?type=외자" class="type-card t-외자">
+        <a href="notices.html?type=외자" class="type-card t-외자">
           <div class="type-icon"><i class="fas fa-globe"></i></div>
           <div class="type-name">외자</div>
           <div class="type-cnt" id="cnt-외자">-</div>
@@ -447,7 +447,7 @@
     <section class="section-block">
       <div class="section-header">
         <h2 class="section-title"><i class="fas fa-fire" style="color:#ef4444"></i> 마감 임박 공고 <span class="section-badge">D-3</span></h2>
-        <a href="public/notices.html?deadline=3" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
+        <a href="notices.html?deadline=3" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
       </div>
       <div class="card-grid" id="closing-notices">
         <div class="card-skeleton"></div>
@@ -460,7 +460,7 @@
     <section class="section-block">
       <div class="section-header">
         <h2 class="section-title"><i class="fas fa-calendar-plus" style="color:#3b82f6"></i> 최신 공고</h2>
-        <a href="public/notices.html" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
+        <a href="notices.html" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
       </div>
       <div class="src-tab-bar">
         <button class="src-tab active" data-src="">전체</button>
@@ -917,12 +917,12 @@
   /* ── 공통 ────────────────────────────────────────────────── */
   window.heroSearch = function() {
     var q = (document.getElementById('hero-search-input')||{}).value;
-    if (q && q.trim()) window.location.href = 'public/notices.html?q=' + encodeURIComponent(q.trim());
+    if (q && q.trim()) window.location.href = 'notices.html?q=' + encodeURIComponent(q.trim());
   };
-  window.goSearch = function(kw) { window.location.href = 'public/notices.html?q=' + encodeURIComponent(kw); };
+  window.goSearch = function(kw) { window.location.href = 'notices.html?q=' + encodeURIComponent(kw); };
   window.goDetail = function(id, url) {
     if (url && url !== 'undefined' && url !== '') window.open(url, '_blank');
-    else window.location.href = 'public/notices.html?id=' + id;
+    else window.location.href = 'notices.html?id=' + id;
   };
 
   /* ── DOMContentLoaded ──────────────────────────────────── */
