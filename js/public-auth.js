@@ -134,3 +134,4 @@ const PublicAuth = (function() {
     updateHeader
   };
 })();
+window.PublicAuth = PublicAuth;
