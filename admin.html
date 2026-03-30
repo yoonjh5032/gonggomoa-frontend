@@ -67,14 +67,62 @@
       </section>
 
       <section class="admin-section" data-section="stats" style="display:none;">
-        <div class="admin-section-head">
-          <div>
-            <h1>방문자 통계</h1>
-            <p>방문자 집계 API 연결 전 임시 영역입니다.</p>
-          </div>
-        </div>
-        <div class="admin-placeholder-card">페이지뷰 수집 API를 붙이면 이 영역에 그래프를 연결할 수 있습니다.</div>
-      </section>
+  <div class="admin-section-head">
+    <div>
+      <h1>방문자 통계</h1>
+      <p>페이지뷰 수집 API가 연결된 실제 방문 통계입니다.</p>
+    </div>
+  </div>
+
+  <div class="admin-stat-grid">
+    <div class="admin-stat-card">
+      <span>오늘 페이지뷰</span>
+      <strong id="vis-today-views">0</strong>
+    </div>
+    <div class="admin-stat-card">
+      <span>오늘 방문자</span>
+      <strong id="vis-today-visitors">0</strong>
+    </div>
+    <div class="admin-stat-card">
+      <span>최근 14일 페이지뷰</span>
+      <strong id="vis-total-views">0</strong>
+    </div>
+    <div class="admin-stat-card">
+      <span>최근 14일 방문자</span>
+      <strong id="vis-total-visitors">0</strong>
+    </div>
+  </div>
+
+  <div class="admin-inquiry-grid">
+    <div class="admin-panel">
+      <div class="admin-panel-head">
+        <strong>최근 14일 방문 추이</strong>
+      </div>
+      <div id="vis-daily" style="padding:16px;">
+        <div class="admin-empty">불러오는 중...</div>
+      </div>
+    </div>
+
+    <div class="admin-panel">
+      <div class="admin-panel-head">
+        <strong>인기 페이지 TOP 10</strong>
+      </div>
+      <div id="vis-top-pages" style="padding:16px;">
+        <div class="admin-empty">불러오는 중...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="admin-panel" style="margin-top:20px;">
+    <div class="admin-panel-head">
+      <strong>최근 방문 기록</strong>
+    </div>
+    <div id="vis-recent" style="padding:16px;">
+      <div class="admin-empty">불러오는 중...</div>
+    </div>
+  </div>
+</section>
+
 
       <section class="admin-section" data-section="inquiries">
         <div class="admin-section-head">
