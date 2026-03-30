@@ -34,7 +34,10 @@ const PublicAuth = (function() {
     var nav = document.querySelector('.pub-nav');
     if (!nav) return;
 
-    var adminLink = document.getElementById('header-admin-link');
+    var adminLink =
+  document.getElementById('header-admin-link') ||
+  nav.querySelector('a[href="/admin.html"], a[href="admin.html"]');
+
 
     if (!isAdminUser(user)) {
       if (adminLink) adminLink.style.display = 'none';
