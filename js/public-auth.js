@@ -6,6 +6,8 @@ const PublicAuth = (function() {
 
   const TOKEN_KEY = 'gm_token';
   const USER_KEY  = 'gm_user';
+  const ADMIN_EMAIL = 'yacoomo@kakao.com';
+  const ADMIN_PAGE_HREF = '/admin.html';
 
   /* ── 토큰 관리 ── */
   function getToken()  { return localStorage.getItem(TOKEN_KEY) || ''; }
@@ -20,6 +22,43 @@ const PublicAuth = (function() {
   function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
+  }
+
+  function isAdminUser(user) {
+    if (!user) return false;
+    var email = String(user.email || '').trim().toLowerCase();
+    return user.role === 'admin' || email === ADMIN_EMAIL;
+  }
+
+  function ensureAdminLink(user) {
+    var nav = document.querySelector('.pub-nav');
+    if (!nav) return;
+
+    var adminLink = document.getElementById('header-admin-link');
+
+    if (!isAdminUser(user)) {
+      if (adminLink) adminLink.style.display = 'none';
+      return;
+    }
+
+    if (!adminLink) {
+      adminLink = document.createElement('a');
+      adminLink.id = 'header-admin-link';
+      adminLink.className = 'pub-nav-link';
+      adminLink.href = ADMIN_PAGE_HREF;
+      adminLink.innerHTML = '<i class="fas fa-shield-halved"></i> 관리자 페이지';
+      nav.appendChild(adminLink);
+    }
+
+    adminLink.href = ADMIN_PAGE_HREF;
+    adminLink.style.display = 'inline-flex';
+
+    var path = window.location.pathname || '';
+    if (path.endsWith('/public/admin.html') || path.endsWith('/admin.html')) {
+      adminLink.classList.add('nav-active');
+    } else {
+      adminLink.classList.remove('nav-active');
+    }
   }
 
   /* ── 회원가입 ── */
@@ -72,12 +111,18 @@ const PublicAuth = (function() {
 
     if (isLoggedIn()) {
       var user = getUser();
+
       if (guestGroup) guestGroup.style.display = 'none';
       if (userGroup)  userGroup.style.display  = 'flex';
       if (nicknameEl && user) nicknameEl.textContent = user.nickname || '사용자';
+
+      ensureAdminLink(user);
     } else {
       if (guestGroup) guestGroup.style.display = 'flex';
       if (userGroup)  userGroup.style.display  = 'none';
+
+      var adminLink = document.getElementById('header-admin-link');
+      if (adminLink) adminLink.style.display = 'none';
     }
   }
 
