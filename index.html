@@ -1108,6 +1108,15 @@
     renderClosing();
     renderLatest('');
     renderTypeCounts();
+    
+    setInterval(function() {
+     if (document.visibilityState === 'visible') {
+      loadStats();
+      renderClosing();
+      renderLatest('');
+      renderTypeCounts();
+     }
+    }, 60000);
 
     document.querySelectorAll('.src-tab').forEach(function(tab) {
       tab.addEventListener('click', function() {
