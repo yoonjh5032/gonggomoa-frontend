@@ -46,3 +46,4 @@ const Feedback = (function() {
 
   return { toast: toast, success: function(m){toast(m,'success')}, error: function(m){toast(m,'error')}, info: function(m){toast(m,'info')} };
 })();
+window.Feedback = Feedback;
