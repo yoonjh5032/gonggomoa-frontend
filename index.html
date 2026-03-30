@@ -765,6 +765,40 @@
       document.getElementById('src-count-total').textContent = s.total || 0;
     } catch (e) {}
   }
+  /* ── 홈 자동 갱신 안전 로직 ───────────────────────────── */
+  var homeRefreshInFlight = false;
+
+  function getActiveSourceValue() {
+    var activeTab = document.querySelector('.src-tab.active');
+    return activeTab ? (activeTab.dataset.src || '') : '';
+  }
+
+  function isHomeViewActive() {
+    var homeView = document.getElementById('view-home');
+    if (!homeView) return true;
+    return homeView.classList.contains('active');
+  }
+
+  async function refreshHomeSectionsSafely() {
+    if (homeRefreshInFlight) return;
+    if (document.visibilityState !== 'visible') return;
+    if (!isHomeViewActive()) return;
+
+    homeRefreshInFlight = true;
+
+    try {
+      var activeSource = getActiveSourceValue();
+
+      await Promise.allSettled([
+        loadStats(),
+        renderClosing(),
+        renderLatest(activeSource),
+        renderTypeCounts()
+      ]);
+    } finally {
+      homeRefreshInFlight = false;
+    }
+  }
 
   /* ════════════════════════════════════════════════
      캘린더 로직 (마감일 기준)
@@ -1100,23 +1134,27 @@
 };
 
 
-  /* ── DOMContentLoaded ──────────────────────────────────── */
-  document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function() {
     if (typeof PublicAuth !== 'undefined') PublicAuth.updateHeader();
 
-    loadStats();
-    renderClosing();
-    renderLatest('');
-    renderTypeCounts();
-    
-    setInterval(function() {
-     if (document.visibilityState === 'visible') {
-      loadStats();
-      renderClosing();
-      renderLatest('');
-      renderTypeCounts();
-     }
+    refreshHomeSectionsSafely();
+
+    if (window.__gonggomoaHomeRefreshTimer) {
+      clearInterval(window.__gonggomoaHomeRefreshTimer);
+    }
+
+    window.__gonggomoaHomeRefreshTimer = setInterval(function() {
+      refreshHomeSectionsSafely();
     }, 60000);
+
+    if (!window.__gonggomoaHomeVisibilityBound) {
+      document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') {
+          refreshHomeSectionsSafely();
+        }
+      });
+      window.__gonggomoaHomeVisibilityBound = true;
+    }
 
     document.querySelectorAll('.src-tab').forEach(function(tab) {
       tab.addEventListener('click', function() {
@@ -1124,7 +1162,10 @@
           t.classList.remove('active');
         });
         tab.classList.add('active');
-        renderLatest(tab.dataset.src);
+
+        if (!homeRefreshInFlight) {
+          renderLatest(tab.dataset.src);
+        }
       });
     });
 
@@ -1142,6 +1183,7 @@
       }, 300);
     }
   });
+
 
   /* ── spin 애니메이션 (캘린더 로딩) ── */
   var styleEl = document.createElement('style');
