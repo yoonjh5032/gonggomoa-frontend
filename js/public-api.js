@@ -9,7 +9,7 @@ const PublicAPI = (function() {
   // ──────────────────────────────────────────────
   // ★★★ 여기를 클라우드타입 배포 도메인으로 변경 ★★★
   // 예: 'https://gonggomoa-api.cloudtype.app'
-  const API_BASE = 'https://your-backend.cloudtype.app/api';
+  const API_BASE = https://port-0-gonggomoa-backend-mncmjkuka041c0e9.sel3.cloudtype.app/api;
   // ──────────────────────────────────────────────
 
   function getToken() {
