@@ -488,9 +488,13 @@
   }
 
   window.goDetail = function(id, url) {
-    if (url && url !== 'undefined' && url !== '') window.open(url, '_blank');
-    else alert('원본 공고 URL이 없습니다. (ID: ' + id + ')');
-  };
+  if (url && url !== 'undefined' && url !== '') {
+    window.open(url, '_blank');
+  } else {
+    window.location.href = '/notices?id=' + id;
+  }
+};
+
 
   updateInterestUi();
   loadPage(1);
