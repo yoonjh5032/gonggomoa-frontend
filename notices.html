@@ -14,7 +14,6 @@
     .notices-page-title { font-size:1.15rem; font-weight:800; display:flex; align-items:center; gap:8px; color:#111827; }
     .notices-total { font-size:.82rem; font-weight:700; color:#1d4ed8; background:#dbeafe; padding:3px 10px; border-radius:20px; }
 
-    /* 필터 바 */
     .filter-bar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
     .filter-bar input, .filter-bar select {
       padding:9px 14px; border:1.5px solid #e5e7eb; border-radius:10px;
@@ -29,7 +28,6 @@
     }
     .filter-btn:hover { opacity:.9; }
 
-    /* 공고 테이블 */
     .notice-table { width:100%; border-collapse:collapse; }
     .notice-table th {
       background:#f9fafb; padding:10px 12px; text-align:left;
@@ -55,8 +53,7 @@
     .notice-table .src-tag.seoul_contract { background:#ffedd5; color:#9a3412; }
     .type-tag { font-size:.7rem; color:#6b7280; background:#f3f4f6; padding:2px 7px; border-radius:20px; }
 
-    /* 페이지네이션 */
-    .pagination { display:flex; justify-content:center; gap:4px; margin-top:24px; }
+    .pagination { display:flex; justify-content:center; gap:4px; margin-top:24px; flex-wrap:wrap; }
     .page-btn {
       padding:8px 14px; border:1px solid #e5e7eb; border-radius:8px;
       font-size:.82rem; font-weight:600; background:#fff; color:#374151;
@@ -103,7 +100,7 @@
 
 <div class="notices-page">
   <div class="notices-page-header">
-    <h1 class="notices-page-title"><i class="fas fa-list-ul" style="color:#3b82f6"></i> 전체 공고</h1>
+    <h1 class="notices-page-title" id="page-title"><i class="fas fa-list-ul" style="color:#3b82f6"></i> 전체 공고</h1>
     <span class="notices-total" id="notices-total">0건</span>
   </div>
 
@@ -128,6 +125,15 @@
       <option value="closing">마감임박순</option>
     </select>
     <button class="filter-btn" onclick="loadPage(1)"><i class="fas fa-search"></i> 검색</button>
+    <button
+      class="filter-btn"
+      type="button"
+      id="interest-toggle-btn"
+      onclick="toggleInterestMode()"
+      style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa"
+    >
+      관심키워드만
+    </button>
   </div>
 
   <!-- 테이블 -->
@@ -246,42 +252,167 @@
 
   var currentPage = 1;
   var limit = 30;
-
-  // URL 파라미터로 초기 필터 설정
   var params = new URLSearchParams(window.location.search);
+  var interestMode = params.get('interest') === '1';
+  var interestKeywords = [];
+
   if (params.get('q'))        document.getElementById('f-search').value = params.get('q');
   if (params.get('source'))   document.getElementById('f-source').value = params.get('source');
   if (params.get('type'))     document.getElementById('f-type').value   = params.get('type');
   if (params.get('deadline')) document.getElementById('f-sort').value   = 'closing';
+  if (params.get('sortBy'))   document.getElementById('f-sort').value   = params.get('sortBy');
 
   if (typeof PublicAuth !== 'undefined') PublicAuth.updateHeader();
 
-  // 엔터 검색
   document.getElementById('f-search').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') loadPage(1);
   });
 
-  function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function srcLabel(s) { return {g2b_api:'나라장터',seoul_board:'서울시',seoul_contract:'계약마당'}[s]||s; }
+  function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function srcLabel(s) {
+    return {g2b_api:'나라장터',seoul_board:'서울시',seoul_contract:'계약마당'}[s] || s;
+  }
+
+  function normalizeKeywords(list) {
+    return (list || [])
+      .map(function(v){ return String(v || '').trim(); })
+      .filter(Boolean)
+      .filter(function(v, i, arr){ return arr.indexOf(v) === i; })
+      .slice(0, 10);
+  }
+
+  function formatKstDate(dateStr) {
+    if (!dateStr) return '-';
+    var d = new Date(dateStr);
+    if (isNaN(d)) return '-';
+
+    var parts = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).formatToParts(d);
+
+    var y = '', m = '', day = '';
+    parts.forEach(function(p) {
+      if (p.type === 'year') y = p.value;
+      if (p.type === 'month') m = p.value;
+      if (p.type === 'day') day = p.value;
+    });
+
+    return y + '-' + m + '-' + day;
+  }
+
+  function setEmpty(html) {
+    document.getElementById('table-body').innerHTML =
+      '<tr><td colspan="6"><div class="empty-state">' + html + '</div></td></tr>';
+    document.getElementById('pagination').innerHTML = '';
+    document.getElementById('notices-total').textContent = '0건';
+  }
+
+  function updateInterestUi() {
+    var titleEl = document.getElementById('page-title');
+    var btnEl = document.getElementById('interest-toggle-btn');
+
+    if (titleEl) {
+      titleEl.innerHTML = interestMode
+        ? '<i class="fas fa-star" style="color:#f59e0b"></i> 관심 키워드 공고'
+        : '<i class="fas fa-list-ul" style="color:#3b82f6"></i> 전체 공고';
+    }
+
+    if (btnEl) {
+      btnEl.textContent = interestMode ? '관심키워드 해제' : '관심키워드만';
+      btnEl.style.background = interestMode ? '#c2410c' : '#fff7ed';
+      btnEl.style.color = interestMode ? '#fff' : '#c2410c';
+      btnEl.style.border = interestMode ? '1px solid #c2410c' : '1px solid #fed7aa';
+    }
+  }
+
+  function syncUrl(page) {
+    var url = new URL(window.location.href);
+
+    var q = document.getElementById('f-search').value.trim();
+    var source = document.getElementById('f-source').value;
+    var type = document.getElementById('f-type').value;
+    var sortBy = document.getElementById('f-sort').value;
+
+    if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+    if (source) url.searchParams.set('source', source); else url.searchParams.delete('source');
+    if (type) url.searchParams.set('type', type); else url.searchParams.delete('type');
+    if (sortBy && sortBy !== 'recent') url.searchParams.set('sortBy', sortBy); else url.searchParams.delete('sortBy');
+
+    if (interestMode) url.searchParams.set('interest', '1');
+    else url.searchParams.delete('interest');
+
+    if (params.get('deadline')) url.searchParams.set('deadline', params.get('deadline'));
+    else url.searchParams.delete('deadline');
+
+    if (page > 1) url.searchParams.set('page', page);
+    else url.searchParams.delete('page');
+
+    var qs = url.searchParams.toString();
+    history.replaceState({}, '', url.pathname + (qs ? '?' + qs : ''));
+  }
+
+  async function ensureInterestKeywords() {
+    if (!interestMode) return [];
+    if (!PublicAuth || !PublicAuth.isLoggedIn()) return [];
+    if (interestKeywords.length) return interestKeywords;
+
+    var resp = await PublicAuth.getMe();
+    interestKeywords = normalizeKeywords(resp && resp.user ? resp.user.keywords : []);
+    return interestKeywords;
+  }
+
+  window.toggleInterestMode = async function() {
+    interestMode = !interestMode;
+    if (!interestMode) interestKeywords = [];
+    updateInterestUi();
+    await loadPage(1);
+  };
 
   window.loadPage = async function(page) {
     currentPage = page;
+    updateInterestUi();
+    syncUrl(page);
+
     var body = document.getElementById('table-body');
     body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:#9ca3af"><i class="fas fa-spinner fa-spin"></i> 로딩 중...</td></tr>';
 
     try {
+      var keywordList = [];
+
+      if (interestMode) {
+        if (!PublicAuth || !PublicAuth.isLoggedIn()) {
+          setEmpty('<i class="fas fa-lock"></i>로그인 후 관심 키워드 공고를 볼 수 있습니다');
+          return;
+        }
+
+        keywordList = await ensureInterestKeywords();
+
+        if (!keywordList.length) {
+          setEmpty('<i class="fas fa-star"></i>마이페이지에서 관심 키워드를 먼저 등록해주세요');
+          return;
+        }
+      }
+
       var resp = await PublicAPI.getNotices({
-        q:      document.getElementById('f-search').value.trim(),
-        source: document.getElementById('f-source').value,
-        type:   document.getElementById('f-type').value,
-        sortBy: document.getElementById('f-sort').value,
+        q:        document.getElementById('f-search').value.trim(),
+        source:   document.getElementById('f-source').value,
+        type:     document.getElementById('f-type').value,
+        sortBy:   document.getElementById('f-sort').value,
         daysLeft: params.get('deadline') || '',
-        limit:  limit,
-        page:   page
+        keywords: keywordList,
+        limit:    limit,
+        page:     page
       });
 
       var list  = resp.data || [];
       var total = resp.total || 0;
+
       document.getElementById('notices-total').textContent = total.toLocaleString() + '건';
 
       if (!list.length) {
@@ -291,13 +422,13 @@
       }
 
       body.innerHTML = list.map(function(n) {
-        var close = n.closing_at ? n.closing_at.slice(0,10) : '-';
+        var close = formatKstDate(n.closing_at);
         return '<tr>' +
           '<td><span class="src-tag ' + (n.source_system||'') + '">' + srcLabel(n.source_system) + '</span></td>' +
-          '<td><span class="type-tag">' + esc(n.notice_type) + '</span></td>' +
+          '<td><span class="type-tag">' + esc(n.notice_type || '') + '</span></td>' +
           '<td class="title-cell" onclick="goDetail(\'' + n.id + '\',\'' + (n.detail_url||'') + '\')">' + esc(n.title) + '</td>' +
-          '<td>' + esc(n.issuing_org) + '</td>' +
-          '<td style="white-space:nowrap;font-weight:600;color:#1d4ed8">' + esc(n.budget_formatted) + '</td>' +
+          '<td>' + esc(n.issuing_org || '') + '</td>' +
+          '<td style="white-space:nowrap;font-weight:600;color:#1d4ed8">' + esc(n.budget_formatted || '') + '</td>' +
           '<td style="white-space:nowrap">' + close + '</td>' +
         '</tr>';
       }).join('');
@@ -310,45 +441,31 @@
 
   function renderPagination(total) {
     var pages = Math.ceil(total / limit);
-    if (pages <= 1) { document.getElementById('pagination').innerHTML = ''; return; }
+    if (pages <= 1) {
+      document.getElementById('pagination').innerHTML = '';
+      return;
+    }
+
     var html = '';
     html += '<button class="page-btn" onclick="loadPage(' + Math.max(1,currentPage-1) + ')" ' + (currentPage<=1?'disabled':'') + '><i class="fas fa-chevron-left"></i></button>';
+
     var start = Math.max(1, currentPage - 3);
     var end   = Math.min(pages, start + 6);
+
     for (var i = start; i <= end; i++) {
       html += '<button class="page-btn ' + (i===currentPage?'active':'') + '" onclick="loadPage(' + i + ')">' + i + '</button>';
     }
+
     html += '<button class="page-btn" onclick="loadPage(' + Math.min(pages,currentPage+1) + ')" ' + (currentPage>=pages?'disabled':'') + '><i class="fas fa-chevron-right"></i></button>';
     document.getElementById('pagination').innerHTML = html;
   }
 
-  window.goDetail = async function(id, url) {
-  var safeUrl = String(url || '').trim();
-  var isLegacyG2b = /g2b\.go\.kr:8101\/ep\/tbid\/tbidFwd\.do/i.test(safeUrl);
+  window.goDetail = function(id, url) {
+    if (url && url !== 'undefined' && url !== '') window.open(url, '_blank');
+    else alert('원본 공고 URL이 없습니다. (ID: ' + id + ')');
+  };
 
-  if (safeUrl && safeUrl !== 'undefined' && safeUrl !== 'null' && !isLegacyG2b) {
-    window.open(safeUrl, '_blank');
-    return;
-  }
-
-  try {
-    var notice = await PublicAPI.getNotice(id);
-    var fetchedUrl = String((notice && notice.detail_url) || '').trim();
-    var fetchedLegacy = /g2b\.go\.kr:8101\/ep\/tbid\/tbidFwd\.do/i.test(fetchedUrl);
-
-    if (fetchedUrl && fetchedUrl !== 'undefined' && fetchedUrl !== 'null' && !fetchedLegacy) {
-      window.open(fetchedUrl, '_blank');
-      return;
-    }
-  } catch (e) {
-    console.error('[goDetail] 상세 URL 재조회 실패:', e);
-  }
-
-  window.location.href = 'notices.html?id=' + encodeURIComponent(id);
-};
-
-
-  // 초기 로드
+  updateInterestUi();
   loadPage(1);
 })();
 </script>
