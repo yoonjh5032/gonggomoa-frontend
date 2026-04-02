@@ -1,10 +1,12 @@
 /* ═══════════════════════════════════════════════════════════
    js/public-api.js — 백엔드 API 통신 모듈
-═══════════════════════════════════════════════════════════ */
+════════════════════════════════════════════════════════════ */
 const PublicAPI = (function() {
   'use strict';
 
-  const API_BASE = String(window.__PUBLIC_API_BASE__ || localStorage.getItem('gm_api_base') || '/api').replace(/\/$/, '');
+  // Cloudflare Pages Functions 프록시 사용
+  // 필요 시 <script>에서 window.__PUBLIC_API_BASE__ 로 강제 override 가능
+  const API_BASE = String(window.__PUBLIC_API_BASE__ || '/api').replace(/\/$/, '');
 
   function getToken() {
     return localStorage.getItem('gm_token') || '';
@@ -13,23 +15,44 @@ const PublicAPI = (function() {
   async function request(method, path, body) {
     const opts = {
       method,
-      headers: { 'Content-Type': 'application/json' }
+      headers: {
+        'Content-Type': 'application/json'
+      }
     };
 
     const token = getToken();
-    if (token) opts.headers['Authorization'] = 'Bearer ' + token;
-    if (body !== undefined) opts.body = JSON.stringify(body);
+    if (token) {
+      opts.headers.Authorization = 'Bearer ' + token;
+    }
+
+    if (body !== undefined) {
+      opts.body = JSON.stringify(body);
+    }
 
     const resp = await fetch(API_BASE + path, opts);
+    const contentType = String(resp.headers.get('content-type') || '');
+
+    // 지금 서비스 구조상 모든 API 응답은 JSON이어야 함
+    if (!contentType.includes('application/json')) {
+      const rawText = await resp.text().catch(function() { return ''; });
+      const preview = rawText ? rawText.slice(0, 120) : '';
+
+      throw new Error(
+        'API 응답이 JSON이 아닙니다. Cloudflare /api 프록시 설정을 확인하세요.'
+        + (preview ? ' (' + preview.replace(/\s+/g, ' ').trim() + ')' : '')
+      );
+    }
+
     const data = await resp.json().catch(function() { return {}; });
 
     if (!resp.ok) {
-      throw new Error(data.error || '요청 실패');
+      throw new Error(data.error || data.message || '요청 실패');
     }
 
     return data;
   }
 
+  // ── 공고 목록 조회 ─────────────────────────────────────
   async function getNotices(params) {
     params = params || {};
     const qs = new URLSearchParams();
@@ -50,7 +73,9 @@ const PublicAPI = (function() {
         .map(function(v) { return String(v || '').trim(); })
         .filter(Boolean);
 
-      if (cleaned.length) qs.set('keywords', cleaned.join(','));
+      if (cleaned.length) {
+        qs.set('keywords', cleaned.join(','));
+      }
     }
 
     if (params.limit) qs.set('limit', params.limit);
@@ -59,6 +84,7 @@ const PublicAPI = (function() {
     return request('GET', '/notices?' + qs.toString());
   }
 
+  // ── 통계 / 공고 상세 ───────────────────────────────────
   async function getStats() {
     return request('GET', '/notices/stats');
   }
@@ -68,13 +94,15 @@ const PublicAPI = (function() {
   }
 
   async function getNotice(id) {
-    return request('GET', '/notices/' + id);
+    return request('GET', '/notices/' + encodeURIComponent(id));
   }
 
+  // ── 문의 ───────────────────────────────────────────────
   async function createInquiry(data) {
     return request('POST', '/inquiries', data);
   }
 
+  // ── 관리자: 문의 ───────────────────────────────────────
   async function getAdminInquiries(params) {
     params = params || {};
     const qs = new URLSearchParams();
@@ -87,6 +115,7 @@ const PublicAPI = (function() {
     return request('GET', '/admin/inquiries?' + qs.toString());
   }
 
+  // ── 관리자: 대시보드 / 회원 ────────────────────────────
   async function getAdminDashboard() {
     return request('GET', '/admin/dashboard');
   }
@@ -111,6 +140,7 @@ const PublicAPI = (function() {
     return request('PATCH', '/admin/users/' + encodeURIComponent(id), data);
   }
 
+  // ── 분석 ───────────────────────────────────────────────
   async function trackPageView(data) {
     return request('POST', '/analytics/pageview', data);
   }
@@ -118,7 +148,11 @@ const PublicAPI = (function() {
   async function getAdminVisitorStats(days) {
     const qs = new URLSearchParams();
     if (days) qs.set('days', days);
-    return request('GET', '/analytics/visitor-stats' + (qs.toString() ? '?' + qs.toString() : ''));
+
+    return request(
+      'GET',
+      '/analytics/visitor-stats' + (qs.toString() ? '?' + qs.toString() : '')
+    );
   }
 
   return {
