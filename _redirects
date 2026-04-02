@@ -4,8 +4,3 @@
 /public/login.html /login 301
 /public/mypage /mypage 301
 /public/mypage.html /mypage 301
-/notices /notices.html 200
-/login /login.html 200
-/mypage /mypage.html 200
-/admin /admin.html 200
-/* /index.html 200
