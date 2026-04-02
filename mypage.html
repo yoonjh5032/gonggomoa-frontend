@@ -250,12 +250,24 @@
   }
 
   function normalizeKeywords(list) {
-    return (list || [])
-      .map(function(v){ return String(v || '').trim(); })
-      .filter(Boolean)
-      .filter(function(v, i, arr){ return arr.indexOf(v) === i; })
-      .slice(0, 10);
+  if (typeof list === 'string') {
+    try {
+      var parsed = JSON.parse(list);
+      list = Array.isArray(parsed) ? parsed : String(list).split(',');
+    } catch (e) {
+      list = String(list).split(',');
+    }
   }
+
+  if (!Array.isArray(list)) list = [];
+
+  return list
+    .map(function(v){ return String(v || '').trim(); })
+    .filter(Boolean)
+    .filter(function(v, i, arr){ return arr.indexOf(v) === i; })
+    .slice(0, 10);
+}
+
 
   function setKeywordMsg(text, isError) {
     var el = document.getElementById('kw-msg');
