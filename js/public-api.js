@@ -41,6 +41,19 @@ const PublicAPI = (function() {
     if (params.sortBy) qs.set('sortBy', params.sortBy);
     if (params.daysLeft) qs.set('daysLeft', params.daysLeft);
     if (params.deadline) qs.set('deadline', params.deadline);
+
+    if (params.keywords) {
+      const keywordList = Array.isArray(params.keywords)
+        ? params.keywords
+        : String(params.keywords).split(',');
+
+      const cleaned = keywordList
+        .map(function(v) { return String(v || '').trim(); })
+        .filter(Boolean);
+
+      if (cleaned.length) qs.set('keywords', cleaned.join(','));
+    }
+
     if (params.limit) qs.set('limit', params.limit);
     if (params.page) qs.set('page', params.page);
 
