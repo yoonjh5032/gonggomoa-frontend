@@ -381,8 +381,8 @@ button { cursor: pointer; }
 /* 홈 광고 배너 */
 .home-ad-section {
   width: 100%;
-  max-width: 840px;
-  margin: 20px auto 24px;
+  max-width: 590px;
+  margin: 16px auto 28px;
 }
 
 .home-ad-banner {
