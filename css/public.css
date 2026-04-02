@@ -55,6 +55,12 @@ button { cursor: pointer; }
   object-fit: contain;
 }
 
+.pub-logo-image-fallback {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
 .pub-nav {
   display: flex;
   gap: 4px;

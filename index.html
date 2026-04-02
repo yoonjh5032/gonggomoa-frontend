@@ -24,6 +24,40 @@
       font-weight: 700;
     }
 
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: nowrap;
+    }
+    .section-title {
+      margin: 0;
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .section-more {
+      margin-left: auto;
+      white-space: nowrap;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    @media (max-width: 768px) {
+      .section-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .section-more {
+        margin-left: 0;
+      }
+    }
+
     /* ════════════════════════════════════
        유형별 공고
     ════════════════════════════════════ */
@@ -437,7 +471,7 @@
 <header class="pub-header">
   <div class="pub-header-inner">
     <a href="/" class="pub-logo" aria-label="공고모아 홈으로 이동">
-      <img src="/assets/gonggomoa-logo.png" alt="공고모아" class="pub-logo-image">
+      <img src="/assets/gonggomoa-logo.png" alt="공고모아" class="pub-logo-image" onerror="this.onerror=null;this.src='/favicon.png';this.classList.add('pub-logo-image-fallback');">
     </a>
     <nav class="pub-nav">
       <a href="#" class="pub-nav-link nav-active" id="nav-home-btn" onclick="showView('home');return false;">
