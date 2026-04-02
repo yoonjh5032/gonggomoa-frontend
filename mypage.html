@@ -36,9 +36,10 @@
     .mp-btn:hover { opacity:.9; }
     .mp-btn.danger { background:#dc2626; }
     .mp-msg { font-size:.82rem; margin-top:8px; min-height:18px; }
-    .mp-msg.ok { color:#059669; } .mp-msg.err { color:#dc2626; }
+    .mp-msg.ok { color:#059669; }
+    .mp-msg.err { color:#dc2626; }
 
-    .mp-keyword-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+    .mp-keyword-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
     .mp-keyword-chip {
       display:inline-flex; align-items:center; gap:4px;
       padding:5px 12px; border-radius:20px; font-size:.8rem; font-weight:600;
@@ -48,6 +49,11 @@
       background:none; border:none; color:#93c5fd; font-size:.85rem; cursor:pointer;
     }
     .mp-keyword-chip button:hover { color:#dc2626; }
+
+    @media (max-width: 640px) {
+      .mypage { padding:28px 16px 48px; }
+      .mypage-card { padding:22px; }
+    }
   </style>
 </head>
 <body>
@@ -75,6 +81,24 @@
 <div class="mypage">
   <div class="mypage-header">
     <h1 class="mypage-title"><i class="fas fa-id-card" style="color:#3b82f6"></i> 마이페이지</h1>
+  </div>
+
+  <!-- 관심 키워드 -->
+  <div class="mypage-card">
+    <div class="mypage-card-title"><i class="fas fa-bell"></i> 관심 키워드</div>
+    <p style="font-size:.82rem;color:#6b7280;margin-bottom:12px">
+      관심 키워드를 등록하면 메인 화면과 전체보기에서 관련 공고만 빠르게 볼 수 있습니다. 최대 10개까지 등록할 수 있습니다.
+    </p>
+
+    <div class="mp-keyword-list" id="kw-list"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="mp-input" id="kw-input" placeholder="예: 서버, 네트워크, 유지보수" style="flex:1;min-width:220px">
+      <button class="mp-btn" type="button" onclick="addKeyword()">추가</button>
+      <button class="mp-btn" type="button" onclick="saveKeywords()" style="background:#0f766e">저장</button>
+    </div>
+
+    <div class="mp-msg" id="kw-msg"></div>
   </div>
 
   <!-- 기본 정보 -->
@@ -117,18 +141,6 @@
     </div>
     <button class="mp-btn" onclick="changePw()">비밀번호 변경</button>
     <div class="mp-msg" id="pw-msg"></div>
-  </div>
-
-  <!-- 관심 키워드 -->
-  <div class="mypage-card">
-    <div class="mypage-card-title"><i class="fas fa-bell"></i> 관심 키워드</div>
-    <p style="font-size:.82rem;color:#6b7280;margin-bottom:12px">관심 키워드를 등록하면 해당 키워드가 포함된 공고를 빠르게 확인할 수 있습니다.</p>
-    <div class="mp-keyword-list" id="kw-list"></div>
-    <div style="display:flex;gap:8px">
-      <input class="mp-input" id="kw-input" placeholder="키워드 입력 후 추가" style="flex:1">
-      <button class="mp-btn" onclick="addKeyword()">추가</button>
-    </div>
-    <div class="mp-msg" id="kw-msg"></div>
   </div>
 </div>
 
@@ -229,18 +241,56 @@
 
   var keywords = [];
 
-  // 프로필 로드
-  PublicAuth.getMe().then(function(resp) {
-    var u = resp.user;
-    document.getElementById('mp-email').value   = u.email || '';
-    document.getElementById('mp-nick').value    = u.nickname || '';
-    document.getElementById('mp-company').value = u.company || '';
-    document.getElementById('mp-phone').value   = u.phone || '';
-    keywords = u.keywords || [];
-    renderKeywords();
-  }).catch(function(err) {
-    Feedback.error('정보를 불러올 수 없습니다.');
-  });
+  function escHtml(s) {
+    return String(s || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function normalizeKeywords(list) {
+    return (list || [])
+      .map(function(v){ return String(v || '').trim(); })
+      .filter(Boolean)
+      .filter(function(v, i, arr){ return arr.indexOf(v) === i; })
+      .slice(0, 10);
+  }
+
+  function setKeywordMsg(text, isError) {
+    var el = document.getElementById('kw-msg');
+    el.className = 'mp-msg ' + (isError ? 'err' : 'ok');
+    el.textContent = text || '';
+  }
+
+  function renderKeywords() {
+    var html = keywords.map(function(kw, i) {
+      return '<span class="mp-keyword-chip">' +
+        escHtml(kw) +
+        ' <button type="button" onclick="removeKeyword(' + i + ')"><i class="fas fa-times"></i></button>' +
+      '</span>';
+    }).join('');
+
+    document.getElementById('kw-list').innerHTML =
+      html || '<span style="font-size:.82rem;color:#9ca3af">등록된 키워드가 없습니다.</span>';
+  }
+
+  async function loadProfile() {
+    try {
+      var resp = await PublicAuth.getMe();
+      var u = resp.user || {};
+
+      document.getElementById('mp-email').value   = u.email || '';
+      document.getElementById('mp-nick').value    = u.nickname || '';
+      document.getElementById('mp-company').value = u.company || '';
+      document.getElementById('mp-phone').value   = u.phone || '';
+
+      keywords = normalizeKeywords(u.keywords || []);
+      renderKeywords();
+    } catch (err) {
+      Feedback.error('정보를 불러올 수 없습니다.');
+    }
+  }
 
   window.saveProfile = async function() {
     var msg = document.getElementById('profile-msg');
@@ -250,9 +300,13 @@
         company:  document.getElementById('mp-company').value.trim(),
         phone:    document.getElementById('mp-phone').value.trim()
       });
-      msg.className = 'mp-msg ok'; msg.textContent = '저장되었습니다.';
+      msg.className = 'mp-msg ok';
+      msg.textContent = '저장되었습니다.';
       PublicAuth.updateHeader();
-    } catch(e) { msg.className = 'mp-msg err'; msg.textContent = e.message; }
+    } catch(e) {
+      msg.className = 'mp-msg err';
+      msg.textContent = e.message;
+    }
   };
 
   window.changePw = async function() {
@@ -260,44 +314,79 @@
     var cur = document.getElementById('mp-cur-pw').value;
     var nw  = document.getElementById('mp-new-pw').value;
     var nw2 = document.getElementById('mp-new-pw2').value;
-    if (nw !== nw2) { msg.className='mp-msg err'; msg.textContent='새 비밀번호가 일치하지 않습니다.'; return; }
+
+    if (nw !== nw2) {
+      msg.className = 'mp-msg err';
+      msg.textContent = '새 비밀번호가 일치하지 않습니다.';
+      return;
+    }
+
     try {
       await PublicAuth.changePassword(cur, nw);
-      msg.className = 'mp-msg ok'; msg.textContent = '비밀번호가 변경되었습니다.';
+      msg.className = 'mp-msg ok';
+      msg.textContent = '비밀번호가 변경되었습니다.';
       document.getElementById('mp-cur-pw').value = '';
       document.getElementById('mp-new-pw').value = '';
       document.getElementById('mp-new-pw2').value = '';
-    } catch(e) { msg.className = 'mp-msg err'; msg.textContent = e.message; }
+    } catch(e) {
+      msg.className = 'mp-msg err';
+      msg.textContent = e.message;
+    }
   };
 
-  function renderKeywords() {
-    var html = keywords.map(function(kw, i) {
-      return '<span class="mp-keyword-chip">' + kw + ' <button onclick="removeKeyword(' + i + ')"><i class="fas fa-times"></i></button></span>';
-    }).join('');
-    document.getElementById('kw-list').innerHTML = html || '<span style="font-size:.82rem;color:#9ca3af">등록된 키워드가 없습니다.</span>';
-  }
+  window.saveKeywords = async function() {
+    keywords = normalizeKeywords(keywords);
+
+    try {
+      var resp = await PublicAuth.updateMe({ keywords: keywords });
+      if (resp && resp.user && Array.isArray(resp.user.keywords)) {
+        keywords = normalizeKeywords(resp.user.keywords);
+      }
+      renderKeywords();
+      setKeywordMsg('관심 키워드가 저장되었습니다.', false);
+    } catch(e) {
+      setKeywordMsg(e.message || '관심 키워드 저장에 실패했습니다.', true);
+    }
+  };
 
   window.addKeyword = async function() {
     var input = document.getElementById('kw-input');
-    var kw = input.value.trim();
+    var kw = String(input.value || '').trim();
+
     if (!kw) return;
-    if (keywords.includes(kw)) { Feedback.info('이미 등록된 키워드입니다.'); return; }
+
+    if (keywords.indexOf(kw) !== -1) {
+      setKeywordMsg('이미 등록된 키워드입니다.', true);
+      return;
+    }
+
+    if (keywords.length >= 10) {
+      setKeywordMsg('관심 키워드는 최대 10개까지 등록할 수 있습니다.', true);
+      return;
+    }
+
     keywords.push(kw);
+    keywords = normalizeKeywords(keywords);
     input.value = '';
     renderKeywords();
-    try { await PublicAuth.updateMe({ keywords: keywords }); } catch(e) {}
+    await saveKeywords();
   };
 
   window.removeKeyword = async function(idx) {
     keywords.splice(idx, 1);
+    keywords = normalizeKeywords(keywords);
     renderKeywords();
-    try { await PublicAuth.updateMe({ keywords: keywords }); } catch(e) {}
+    await saveKeywords();
   };
 
-  // 엔터 키워드 추가
   document.getElementById('kw-input').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') { e.preventDefault(); addKeyword(); }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addKeyword();
+    }
   });
+
+  loadProfile();
 })();
 </script>
 </body>
