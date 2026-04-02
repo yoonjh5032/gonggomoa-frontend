@@ -23,7 +23,12 @@
       color: #fff;
       font-weight: 700;
     }
-
+    .section-block {
+      margin-top: 40px;
+    }
+    .section-block:first-child {
+      margin-top: 0;
+    }
     .section-header {
       display: flex;
       align-items: center;
@@ -50,6 +55,13 @@
     }
     @media (max-width: 768px) {
       .section-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      .section-block:first-child {
+        margin-top: 0;
+      }
+     .section-header {
         align-items: flex-start;
         flex-wrap: wrap;
       }
