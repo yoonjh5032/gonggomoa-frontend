@@ -625,4 +625,124 @@
 
   async function loadVisitorStats() {
     try {
-      $('vis-daily').innerHTML = '<
+      $('vis-daily').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+      $('vis-top-pages').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+      $('vis-recent').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+
+      var resp = await PublicAPI.getAdminVisitorStats(state.visitorDays);
+
+      renderVisitorSummary(resp.summary || {});
+      renderVisitorDaily(resp.daily || []);
+      renderTopPages(resp.topPages || []);
+      renderRecentVisits(resp.recent || []);
+    } catch (err) {
+      $('vis-daily').innerHTML = '<div class="admin-empty">' + esc(err.message || '방문자 통계를 불러오지 못했습니다.') + '</div>';
+      $('vis-top-pages').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
+      $('vis-recent').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
+      if (typeof Feedback !== 'undefined') Feedback.error(err.message || '방문자 통계 조회 실패');
+    }
+  }
+
+  /* ─────────────────────────────
+     Boot
+  ───────────────────────────── */
+  async function openSection(name) {
+    showSection(name);
+
+    if (name === 'dashboard') {
+      await loadDashboard();
+      return;
+    }
+
+    if (name === 'members') {
+      await loadUsers();
+      return;
+    }
+
+    if (name === 'stats') {
+      await loadVisitorStats();
+      return;
+    }
+
+    if (name === 'inquiries') {
+      await loadInquiries();
+    }
+  }
+
+  async function boot() {
+    if (!PublicAuth.isLoggedIn()) {
+      window.location.href = 'login.html';
+      return;
+    }
+
+    try {
+      var meResp = await PublicAuth.getMe();
+      var me = meResp.user || null;
+      state.me = me;
+
+      if (!me || me.role !== 'admin') {
+        alert('관리자만 접근할 수 있습니다.');
+        window.location.href = '/';
+        return;
+      }
+
+      PublicAuth.updateHeader();
+      $('admin-name').textContent = me.nickname || me.email || '관리자';
+      $('admin-email').textContent = me.email || '';
+      $('header-nickname').textContent = me.nickname || me.email || '관리자';
+
+      document.querySelectorAll('.admin-menu-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          openSection(btn.dataset.section);
+        });
+      });
+
+      $('member-role-filter').addEventListener('change', function() {
+        state.users.role = this.value;
+        state.users.page = 1;
+        loadUsers();
+      });
+
+      $('member-search-btn').addEventListener('click', function() {
+        state.users.q = $('member-search').value.trim();
+        state.users.page = 1;
+        loadUsers();
+      });
+
+      $('member-search').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          state.users.q = $('member-search').value.trim();
+          state.users.page = 1;
+          loadUsers();
+        }
+      });
+
+      $('inq-status-filter').addEventListener('change', function() {
+        state.inquiries.status = this.value;
+        state.inquiries.page = 1;
+        loadInquiries();
+      });
+
+      $('inq-search-btn').addEventListener('click', function() {
+        state.inquiries.q = $('inq-search').value.trim();
+        state.inquiries.page = 1;
+        loadInquiries();
+      });
+
+      $('inq-search').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          state.inquiries.q = $('inq-search').value.trim();
+          state.inquiries.page = 1;
+          loadInquiries();
+        }
+      });
+
+      await openSection('dashboard');
+    } catch (err) {
+      alert(err.message || '관리자 정보를 확인할 수 없습니다.');
+      window.location.href = 'login.html';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', boot);
+})();
