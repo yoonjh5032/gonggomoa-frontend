@@ -397,6 +397,35 @@
 <div id="view-home" class="page-view active">
   <main class="pub-main">
     
+    <!-- 유형별 공고 -->
+    <section class="section-block">
+      <div class="section-header">
+        <h2 class="section-title"><i class="fas fa-tags" style="color:#8b5cf6"></i> 유형별 공고</h2>
+      </div>
+      <div class="type-grid">
+        <a href="public/notices.html?type=공사" class="type-card t-공사">
+          <div class="type-icon"><i class="fas fa-hard-hat"></i></div>
+          <div class="type-name">공사</div>
+          <div class="type-cnt" id="cnt-공사">-</div>
+        </a>
+        <a href="public/notices.html?type=용역" class="type-card t-용역">
+          <div class="type-icon"><i class="fas fa-handshake"></i></div>
+          <div class="type-name">용역</div>
+          <div class="type-cnt" id="cnt-용역">-</div>
+        </a>
+        <a href="public/notices.html?type=물품" class="type-card t-물품">
+          <div class="type-icon"><i class="fas fa-box"></i></div>
+          <div class="type-name">물품</div>
+          <div class="type-cnt" id="cnt-물품">-</div>
+        </a>
+        <a href="public/notices.html?type=외자" class="type-card t-외자">
+          <div class="type-icon"><i class="fas fa-globe"></i></div>
+          <div class="type-name">외자</div>
+          <div class="type-cnt" id="cnt-외자">-</div>
+        </a>
+      </div>
+    </section>
+
     <!-- 메인 광고 배너 -->
     <section class="home-ad-section">
       <a
@@ -414,40 +443,11 @@
       </a>
     </section>
 
-    <!-- 유형별 공고 -->
-    <section class="section-block">
-      <div class="section-header">
-        <h2 class="section-title"><i class="fas fa-tags" style="color:#8b5cf6"></i> 유형별 공고</h2>
-      </div>
-      <div class="type-grid">
-        <a href="notices.html?type=공사" class="type-card t-공사">
-          <div class="type-icon"><i class="fas fa-hard-hat"></i></div>
-          <div class="type-name">공사</div>
-          <div class="type-cnt" id="cnt-공사">-</div>
-        </a>
-        <a href="notices.html?type=용역" class="type-card t-용역">
-          <div class="type-icon"><i class="fas fa-handshake"></i></div>
-          <div class="type-name">용역</div>
-          <div class="type-cnt" id="cnt-용역">-</div>
-        </a>
-        <a href="notices.html?type=물품" class="type-card t-물품">
-          <div class="type-icon"><i class="fas fa-box"></i></div>
-          <div class="type-name">물품</div>
-          <div class="type-cnt" id="cnt-물품">-</div>
-        </a>
-        <a href="notices.html?type=외자" class="type-card t-외자">
-          <div class="type-icon"><i class="fas fa-globe"></i></div>
-          <div class="type-name">외자</div>
-          <div class="type-cnt" id="cnt-외자">-</div>
-        </a>
-      </div>
-    </section>
-
     <!-- 마감 임박 -->
     <section class="section-block">
       <div class="section-header">
         <h2 class="section-title"><i class="fas fa-fire" style="color:#ef4444"></i> 마감 임박 공고 <span class="section-badge">D-3</span></h2>
-        <a href="notices.html?deadline=3" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
+        <a href="public/notices.html?deadline=3" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
       </div>
       <div class="card-grid" id="closing-notices">
         <div class="card-skeleton"></div>
@@ -460,7 +460,7 @@
     <section class="section-block">
       <div class="section-header">
         <h2 class="section-title"><i class="fas fa-calendar-plus" style="color:#3b82f6"></i> 최신 공고</h2>
-        <a href="notices.html" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
+        <a href="public/notices.html" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
       </div>
       <div class="src-tab-bar">
         <button class="src-tab active" data-src="">전체</button>
