@@ -25,7 +25,8 @@
       selectedId: null
     },
 
-    visitorDays: 14
+    visitorDays: 14,
+    collectorActionLoading: {}
   };
 
   function $(id) {
@@ -82,6 +83,104 @@
 
   function roleClass(value) {
     return 'admin-status ' + (value === 'admin' ? 'admin-status-done' : 'admin-status-received');
+  }
+
+  function getApiBase() {
+    if (typeof PublicAPI !== 'undefined' && PublicAPI && PublicAPI.API_BASE) {
+      return String(PublicAPI.API_BASE).replace(/\/$/, '');
+    }
+    return '/api';
+  }
+
+  function getAdminToken() {
+    try {
+      return localStorage.getItem('gm_token') || '';
+    } catch (err) {
+      return '';
+    }
+  }
+
+  async function adminRequest(method, path, body) {
+    var headers = { 'Content-Type': 'application/json' };
+    var token = getAdminToken();
+    if (token) {
+      headers.Authorization = 'Bearer ' + token;
+    }
+
+    var resp = await fetch(getApiBase() + '/admin' + path, {
+      method: method,
+      headers: headers,
+      body: body ? JSON.stringify(body) : undefined
+    });
+
+    var data = {};
+    try {
+      data = await resp.json();
+    } catch (err) {
+      data = {};
+    }
+
+    if (!resp.ok) {
+      throw new Error(data.error || '관리자 요청 처리에 실패했습니다.');
+    }
+
+    return data;
+  }
+
+  function queueDashboardRefresh(delays) {
+    (delays || []).forEach(function(delay) {
+      setTimeout(function() {
+        if (state.currentSection === 'dashboard') {
+          loadDashboard();
+        }
+      }, delay);
+    });
+  }
+
+  async function runCollectorAction(key) {
+    if (!key || state.collectorActionLoading[key]) return;
+
+    state.collectorActionLoading[key] = true;
+    renderCollectorStatus((state.dashboard && state.dashboard.collectorStatus) || {});
+
+    try {
+      var resp = await adminRequest('POST', '/collectors/' + encodeURIComponent(key) + '/run', {});
+
+      if (!state.dashboard) state.dashboard = {};
+      if (!state.dashboard.summary) state.dashboard.summary = {};
+
+      if (resp.collectorStatus) {
+        state.dashboard.collectorStatus = resp.collectorStatus;
+
+        var items = Array.isArray(resp.collectorStatus.items) ? resp.collectorStatus.items : [];
+        state.dashboard.summary.collectorsEnabled = items.filter(function(item) { return item.enabled; }).length;
+        state.dashboard.summary.collectorsRunning = items.filter(function(item) { return item.running; }).length;
+        renderDashboardSummary(state.dashboard.summary);
+      }
+
+      renderCollectorStatus(state.dashboard.collectorStatus || {});
+
+      if (typeof Feedback !== 'undefined') {
+        if (resp.started) {
+          Feedback.success(resp.message || '수동 실행을 시작했습니다.');
+        } else {
+          Feedback.error(resp.message || '수동 실행을 시작할 수 없습니다.');
+        }
+      } else {
+        alert(resp.message || '처리가 완료되었습니다.');
+      }
+
+      queueDashboardRefresh(resp.started ? [1000, 3000, 7000] : [1000]);
+    } catch (err) {
+      if (typeof Feedback !== 'undefined') {
+        Feedback.error(err.message || '수동 실행 요청 실패');
+      } else {
+        alert(err.message || '수동 실행 요청 실패');
+      }
+    } finally {
+      delete state.collectorActionLoading[key];
+      renderCollectorStatus((state.dashboard && state.dashboard.collectorStatus) || {});
+    }
   }
 
   function showSection(name) {
@@ -154,20 +253,24 @@
 
   function summarizeCollectorResult(item) {
     var result = item && item.lastResult;
-    if (!result || typeof result !== 'object') return '-';
-
     var parts = [];
 
-    if (result.new !== undefined) parts.push('신규 ' + result.new);
-    if (result.updated !== undefined) parts.push('갱신 ' + result.updated);
-    if (result.errors !== undefined) parts.push('에러 ' + result.errors);
-    if (result.parsed !== undefined) parts.push('파싱 ' + result.parsed);
-    if (result.kept !== undefined) parts.push('유지 ' + result.kept);
-    if (result.newCount !== undefined) parts.push('신규 ' + result.newCount);
-    if (result.updatedCount !== undefined) parts.push('갱신 ' + result.updatedCount);
-    if (result.errorCount !== undefined) parts.push('에러 ' + result.errorCount);
-    if (result.parsedCount !== undefined) parts.push('파싱 ' + result.parsedCount);
-    if (result.deleted !== undefined) parts.push('삭제 ' + result.deleted);
+    if (result && typeof result === 'object') {
+      if (result.new !== undefined) parts.push('신규 ' + result.new);
+      if (result.updated !== undefined) parts.push('갱신 ' + result.updated);
+      if (result.errors !== undefined) parts.push('에러 ' + result.errors);
+      if (result.parsed !== undefined) parts.push('파싱 ' + result.parsed);
+      if (result.kept !== undefined) parts.push('유지 ' + result.kept);
+      if (result.newCount !== undefined) parts.push('신규 ' + result.newCount);
+      if (result.updatedCount !== undefined) parts.push('갱신 ' + result.updatedCount);
+      if (result.errorCount !== undefined) parts.push('에러 ' + result.errorCount);
+      if (result.parsedCount !== undefined) parts.push('파싱 ' + result.parsedCount);
+      if (result.deleted !== undefined) parts.push('삭제 ' + result.deleted);
+    }
+
+    if (!parts.length && item && item.lastSkippedReason) {
+      parts.push('건너뜀 ' + item.lastSkippedReason);
+    }
 
     return parts.length ? parts.join(' / ') : '-';
   }
@@ -192,7 +295,7 @@
     wrap.innerHTML =
       '<div class="admin-table-wrap">' +
         '<table class="admin-table">' +
-          '<thead><tr><th>대상</th><th>상태</th><th>최근 작업</th><th>최근 결과</th><th>마지막 성공</th><th>최근 오류</th></tr></thead>' +
+          '<thead><tr><th>대상</th><th>상태</th><th>최근 작업</th><th>최근 결과</th><th>마지막 성공</th><th>최근 오류</th><th>실행</th></tr></thead>' +
           '<tbody>' +
             items.map(function(item) {
               var status = monitorStatusLabel(item);
@@ -211,6 +314,14 @@
                 ? item.schedules.join(', ')
                 : '-';
 
+              var isRunnable = item.kind === 'collector';
+              var isLoading = !!state.collectorActionLoading[item.key];
+              var disabled = !isRunnable || item.enabled === false || item.running || isLoading;
+              var buttonLabel = isLoading ? '요청 중...' : (item.running ? '실행 중' : '수동 실행');
+              var actionHtml = isRunnable
+                ? '<button class="admin-primary-btn" data-run-collector="' + esc(item.key) + '" ' + (disabled ? 'disabled' : '') + '>' + esc(buttonLabel) + '</button>'
+                : '-';
+
               return '<tr>' +
                 '<td><strong>' + esc(item.label || item.key) + '</strong><div class="admin-table-sub">' + esc(item.key || '-') + ' · ' + esc(schedules) + '</div></td>' +
                 '<td><span class="' + status.className + '">' + esc(status.text) + '</span></td>' +
@@ -218,11 +329,18 @@
                 '<td>' + esc(summarizeCollectorResult(item)) + '</td>' +
                 '<td>' + esc(fmtDate(item.lastSuccessAt)) + '</td>' +
                 '<td>' + lastError + '</td>' +
+                '<td>' + actionHtml + '</td>' +
               '</tr>';
             }).join('') +
           '</tbody>' +
         '</table>' +
       '</div>';
+
+    wrap.querySelectorAll('button[data-run-collector]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        runCollectorAction(btn.getAttribute('data-run-collector'));
+      });
+    });
   }
 
   function renderDashboardRecentUsers(list) {
