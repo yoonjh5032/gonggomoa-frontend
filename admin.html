@@ -68,7 +68,7 @@
         <div class="admin-section-head">
           <div>
             <h1>대시보드</h1>
-            <p>회원, 문의, 방문 데이터를 한 화면에서 확인하고 수집기를 수동 실행할 수 있습니다.</p>
+            <p>회원, 문의, 방문 데이터를 한 화면에서 확인하고 수집기를 수동 실행하거나 실행 이력을 조회할 수 있습니다.</p>
           </div>
         </div>
 
@@ -121,6 +121,16 @@
             <span id="collector-status-updated" class="admin-loading">-</span>
           </div>
           <div id="dashboard-collector-status" style="padding:16px;">
+            <div class="admin-empty">불러오는 중...</div>
+          </div>
+        </div>
+
+        <div class="admin-panel" style="margin-bottom:20px;">
+          <div class="admin-panel-head">
+            <strong>최근 수집 실행 이력 / 감사 로그</strong>
+            <span id="collector-log-updated" class="admin-loading">-</span>
+          </div>
+          <div id="dashboard-collector-logs" style="padding:16px;">
             <div class="admin-empty">불러오는 중...</div>
           </div>
         </div>
