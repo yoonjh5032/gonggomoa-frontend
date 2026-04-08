@@ -158,7 +158,12 @@
         renderDashboardSummary(state.dashboard.summary);
       }
 
+      if (Array.isArray(resp.recentCollectorLogs)) {
+        state.dashboard.recentCollectorLogs = resp.recentCollectorLogs;
+      }
+
       renderCollectorStatus(state.dashboard.collectorStatus || {});
+      renderCollectorRunLogs(state.dashboard.recentCollectorLogs || []);
 
       if (typeof Feedback !== 'undefined') {
         if (resp.started) {
@@ -275,6 +280,90 @@
     return parts.length ? parts.join(' / ') : '-';
   }
 
+  function collectorTriggerLabel(value) {
+    return {
+      manual: '수동',
+      scheduled: '자동',
+      startup: '기동',
+      maintenance: '정리'
+    }[value] || value || '-';
+  }
+
+  function collectorRunStatusMeta(log) {
+    if (!log) return { text: '-', className: 'admin-status admin-status-received' };
+
+    if (log.status === 'success') {
+      return { text: '성공', className: 'admin-status admin-status-done' };
+    }
+    if (log.status === 'error') {
+      return { text: '오류', className: 'admin-status admin-status-received' };
+    }
+    if (log.status === 'skipped') {
+      return { text: '건너뜀', className: 'admin-status admin-status-in_progress' };
+    }
+    return { text: '시작', className: 'admin-status admin-status-in_progress' };
+  }
+
+  function summarizeCollectorLogResult(log) {
+    if (!log) return '-';
+
+    if (log.status === 'skipped') {
+      return log.skip_reason ? ('건너뜀 · ' + log.skip_reason) : '건너뜀';
+    }
+
+    if (log.status === 'error') {
+      return log.error_message || '실행 오류';
+    }
+
+    var result = log.result;
+    var parts = [];
+
+    if (result && typeof result === 'object') {
+      if (result.new !== undefined) parts.push('신규 ' + result.new);
+      if (result.updated !== undefined) parts.push('갱신 ' + result.updated);
+      if (result.errors !== undefined) parts.push('에러 ' + result.errors);
+      if (result.parsed !== undefined) parts.push('파싱 ' + result.parsed);
+      if (result.kept !== undefined) parts.push('유지 ' + result.kept);
+      if (result.newCount !== undefined) parts.push('신규 ' + result.newCount);
+      if (result.updatedCount !== undefined) parts.push('갱신 ' + result.updatedCount);
+      if (result.errorCount !== undefined) parts.push('에러 ' + result.errorCount);
+      if (result.parsedCount !== undefined) parts.push('파싱 ' + result.parsedCount);
+      if (result.deleted !== undefined) parts.push('삭제 ' + result.deleted);
+    }
+
+    return parts.length ? parts.join(' / ') : '-';
+  }
+
+  function collectorActorLabel(log) {
+    if (!log) return '-';
+
+    if (log.trigger_type !== 'manual') {
+      return '시스템';
+    }
+
+    var name = log.actor_name || '';
+    var email = log.actor_email || '';
+    var role = log.actor_role || '';
+
+    if (name && email) {
+      return name + ' (' + email + ')' + (role ? ' · ' + role : '');
+    }
+
+    if (email) {
+      return email + (role ? ' · ' + role : '');
+    }
+
+    if (name) {
+      return name + (role ? ' · ' + role : '');
+    }
+
+    if (log.actor_user_id) {
+      return '관리자 #' + log.actor_user_id;
+    }
+
+    return '관리자';
+  }
+
   function renderCollectorStatus(payload) {
     var wrap = $('dashboard-collector-status');
     var updatedEl = $('collector-status-updated');
@@ -343,6 +432,50 @@
     });
   }
 
+  function renderCollectorRunLogs(list) {
+    var wrap = $('dashboard-collector-logs');
+    var updatedEl = $('collector-log-updated');
+
+    if (!wrap) return;
+
+    if (updatedEl) {
+      updatedEl.textContent = list && list.length
+        ? ('최신: ' + fmtDate(list[0].createdAt || list[0].updatedAt || list[0].finished_at || list[0].started_at))
+        : '-';
+    }
+
+    if (!list || !list.length) {
+      wrap.innerHTML = '<div class="admin-empty">최근 수집 실행 이력이 없습니다.</div>';
+      return;
+    }
+
+    wrap.innerHTML =
+      '<div class="admin-table-wrap">' +
+        '<table class="admin-table">' +
+          '<thead><tr><th>시각</th><th>대상</th><th>유형</th><th>상태</th><th>실행자</th><th>작업</th><th>결과/오류</th></tr></thead>' +
+          '<tbody>' +
+            list.map(function(log) {
+              var status = collectorRunStatusMeta(log);
+              var whenText = fmtDate(log.finished_at || log.started_at || log.createdAt);
+              var jobText = '<strong>' + esc(log.job_name || '-') + '</strong>' +
+                '<div class="admin-table-sub">소요 ' + esc(fmtDuration(log.duration_ms)) + '</div>';
+              var resultText = summarizeCollectorLogResult(log);
+
+              return '<tr>' +
+                '<td>' + esc(whenText) + '</td>' +
+                '<td><strong>' + esc(log.collector_label || log.collector_key || '-') + '</strong><div class="admin-table-sub">' + esc(log.collector_key || '-') + '</div></td>' +
+                '<td>' + esc(collectorTriggerLabel(log.trigger_type)) + '</td>' +
+                '<td><span class="' + status.className + '">' + esc(status.text) + '</span></td>' +
+                '<td style="max-width:220px;word-break:break-word;">' + esc(collectorActorLabel(log)) + '</td>' +
+                '<td>' + jobText + '</td>' +
+                '<td style="max-width:320px;word-break:break-word;">' + esc(resultText) + '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
   function renderDashboardRecentUsers(list) {
     var wrap = $('dashboard-recent-users');
 
@@ -402,12 +535,16 @@
       if ($('dashboard-collector-status')) {
         $('dashboard-collector-status').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
       }
+      if ($('dashboard-collector-logs')) {
+        $('dashboard-collector-logs').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+      }
 
       var resp = await PublicAPI.getAdminDashboard();
       state.dashboard = resp;
 
       renderDashboardSummary(resp.summary || {});
       renderCollectorStatus(resp.collectorStatus || {});
+      renderCollectorRunLogs(resp.recentCollectorLogs || []);
       renderDashboardRecentUsers(resp.recentUsers || []);
       renderDashboardRecentInquiries(resp.recentInquiries || []);
     } catch (err) {
@@ -416,8 +553,14 @@
       if ($('dashboard-collector-status')) {
         $('dashboard-collector-status').innerHTML = '<div class="admin-empty">수집 상태를 불러오지 못했습니다.</div>';
       }
+      if ($('dashboard-collector-logs')) {
+        $('dashboard-collector-logs').innerHTML = '<div class="admin-empty">실행 이력을 불러오지 못했습니다.</div>';
+      }
       if ($('collector-status-updated')) {
         $('collector-status-updated').textContent = '-';
+      }
+      if ($('collector-log-updated')) {
+        $('collector-log-updated').textContent = '-';
       }
       if (typeof Feedback !== 'undefined') Feedback.error(err.message || '대시보드 조회 실패');
     }
@@ -989,3 +1132,4 @@
 
   document.addEventListener('DOMContentLoaded', boot);
 })();
+ 
