@@ -25,21 +25,6 @@
       selectedId: null
     },
 
-    collectorLogs: {
-      page: 1,
-      limit: 20,
-      key: 'all',
-      status: 'all',
-      triggerType: 'all',
-      from: '',
-      to: '',
-      q: '',
-      items: [],
-      selectedId: null,
-      pagination: null,
-      summary: null
-    },
-
     visitorDays: 14,
     collectorActionLoading: {}
   };
@@ -57,77 +42,16 @@
       .replace(/'/g, '&#39;');
   }
 
-  function pad2(value) {
-    return String(value).padStart(2, '0');
-  }
-
   function fmtDate(value) {
     if (!value) return '-';
     var date = new Date(value);
-    if (isNaN(date.getTime())) return String(value);
+    if (isNaN(date.getTime())) return value;
 
     return date.getFullYear() + '-' +
-      pad2(date.getMonth() + 1) + '-' +
-      pad2(date.getDate()) + ' ' +
-      pad2(date.getHours()) + ':' +
-      pad2(date.getMinutes());
-  }
-
-  function fmtDateSeconds(value) {
-    if (!value) return '-';
-    var date = new Date(value);
-    if (isNaN(date.getTime())) return String(value);
-
-    return date.getFullYear() + '-' +
-      pad2(date.getMonth() + 1) + '-' +
-      pad2(date.getDate()) + ' ' +
-      pad2(date.getHours()) + ':' +
-      pad2(date.getMinutes()) + ':' +
-      pad2(date.getSeconds());
-  }
-
-  function fmtDuration(ms) {
-    var value = Number(ms || 0);
-    if (!value || value < 1000) return '-';
-
-    var seconds = Math.round(value / 1000);
-    if (seconds < 60) return seconds + '초';
-
-    var minutes = Math.floor(seconds / 60);
-    var remainSeconds = seconds % 60;
-    if (minutes < 60) {
-      return minutes + '분' + (remainSeconds ? ' ' + remainSeconds + '초' : '');
-    }
-
-    var hours = Math.floor(minutes / 60);
-    var remainMinutes = minutes % 60;
-    return hours + '시간' + (remainMinutes ? ' ' + remainMinutes + '분' : '');
-  }
-
-  function prettyJson(value) {
-    if (value === null || value === undefined || value === '') return '-';
-
-    try {
-      return JSON.stringify(value, null, 2);
-    } catch (err) {
-      return String(value);
-    }
-  }
-
-  function notifySuccess(message) {
-    if (typeof Feedback !== 'undefined' && Feedback && typeof Feedback.success === 'function') {
-      Feedback.success(message || '처리되었습니다.');
-      return;
-    }
-    alert(message || '처리되었습니다.');
-  }
-
-  function notifyError(message) {
-    if (typeof Feedback !== 'undefined' && Feedback && typeof Feedback.error === 'function') {
-      Feedback.error(message || '오류가 발생했습니다.');
-      return;
-    }
-    alert(message || '오류가 발생했습니다.');
+      String(date.getMonth() + 1).padStart(2, '0') + '-' +
+      String(date.getDate()).padStart(2, '0') + ' ' +
+      String(date.getHours()).padStart(2, '0') + ':' +
+      String(date.getMinutes()).padStart(2, '0');
   }
 
   function categoryLabel(value) {
@@ -209,9 +133,6 @@
         if (state.currentSection === 'dashboard') {
           loadDashboard();
         }
-        if (state.currentSection === 'collector-logs') {
-          loadCollectorLogs();
-        }
       }, delay);
     });
   }
@@ -244,19 +165,23 @@
       renderCollectorStatus(state.dashboard.collectorStatus || {});
       renderCollectorRunLogs(state.dashboard.recentCollectorLogs || []);
 
-      if (resp.started) {
-        notifySuccess(resp.message || '수동 실행을 시작했습니다.');
+      if (typeof Feedback !== 'undefined') {
+        if (resp.started) {
+          Feedback.success(resp.message || '수동 실행을 시작했습니다.');
+        } else {
+          Feedback.error(resp.message || '수동 실행을 시작할 수 없습니다.');
+        }
       } else {
-        notifyError(resp.message || '수동 실행을 시작할 수 없습니다.');
-      }
-
-      if (state.currentSection === 'collector-logs') {
-        loadCollectorLogs();
+        alert(resp.message || '처리가 완료되었습니다.');
       }
 
       queueDashboardRefresh(resp.started ? [1000, 3000, 7000] : [1000]);
     } catch (err) {
-      notifyError(err.message || '수동 실행 요청 실패');
+      if (typeof Feedback !== 'undefined') {
+        Feedback.error(err.message || '수동 실행 요청 실패');
+      } else {
+        alert(err.message || '수동 실행 요청 실패');
+      }
     } finally {
       delete state.collectorActionLoading[key];
       renderCollectorStatus((state.dashboard && state.dashboard.collectorStatus) || {});
@@ -273,12 +198,6 @@
     document.querySelectorAll('.admin-menu-btn').forEach(function(btn) {
       btn.classList.toggle('active', btn.dataset.section === name);
     });
-
-    if (name === 'dashboard') loadDashboard();
-    if (name === 'collector-logs') loadCollectorLogs();
-    if (name === 'members') loadUsers();
-    if (name === 'stats') loadVisitorStats();
-    if (name === 'inquiries') loadInquiries();
   }
 
   /* ─────────────────────────────
@@ -301,6 +220,24 @@
     if ($('dash-collectors-running')) {
       $('dash-collectors-running').textContent = (summary.collectorsRunning || 0).toLocaleString();
     }
+  }
+
+  function fmtDuration(ms) {
+    var value = Number(ms || 0);
+    if (!value || value < 1000) return '-';
+
+    var seconds = Math.round(value / 1000);
+    if (seconds < 60) return seconds + '초';
+
+    var minutes = Math.floor(seconds / 60);
+    var remainSeconds = seconds % 60;
+    if (minutes < 60) {
+      return minutes + '분' + (remainSeconds ? ' ' + remainSeconds + '초' : '');
+    }
+
+    var hours = Math.floor(minutes / 60);
+    var remainMinutes = minutes % 60;
+    return hours + '시간' + (remainMinutes ? ' ' + remainMinutes + '분' : '');
   }
 
   function monitorStatusLabel(item) {
@@ -595,7 +532,6 @@
     try {
       $('dashboard-recent-users').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
       $('dashboard-recent-inquiries').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
-
       if ($('dashboard-collector-status')) {
         $('dashboard-collector-status').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
       }
@@ -614,7 +550,6 @@
     } catch (err) {
       $('dashboard-recent-users').innerHTML = '<div class="admin-empty">' + esc(err.message || '대시보드를 불러오지 못했습니다.') + '</div>';
       $('dashboard-recent-inquiries').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
-
       if ($('dashboard-collector-status')) {
         $('dashboard-collector-status').innerHTML = '<div class="admin-empty">수집 상태를 불러오지 못했습니다.</div>';
       }
@@ -627,247 +562,7 @@
       if ($('collector-log-updated')) {
         $('collector-log-updated').textContent = '-';
       }
-
-      notifyError(err.message || '대시보드 조회 실패');
-    }
-  }
-
-  /* ─────────────────────────────
-     Collector logs
-  ───────────────────────────── */
-  function syncCollectorLogFilterInputs() {
-    if ($('collector-log-key-filter')) $('collector-log-key-filter').value = state.collectorLogs.key;
-    if ($('collector-log-status-filter')) $('collector-log-status-filter').value = state.collectorLogs.status;
-    if ($('collector-log-trigger-filter')) $('collector-log-trigger-filter').value = state.collectorLogs.triggerType;
-    if ($('collector-log-from')) $('collector-log-from').value = state.collectorLogs.from || '';
-    if ($('collector-log-to')) $('collector-log-to').value = state.collectorLogs.to || '';
-    if ($('collector-log-search')) $('collector-log-search').value = state.collectorLogs.q || '';
-  }
-
-  function readCollectorLogFiltersFromInputs() {
-    state.collectorLogs.key = $('collector-log-key-filter') ? $('collector-log-key-filter').value : 'all';
-    state.collectorLogs.status = $('collector-log-status-filter') ? $('collector-log-status-filter').value : 'all';
-    state.collectorLogs.triggerType = $('collector-log-trigger-filter') ? $('collector-log-trigger-filter').value : 'all';
-    state.collectorLogs.from = $('collector-log-from') ? $('collector-log-from').value.trim() : '';
-    state.collectorLogs.to = $('collector-log-to') ? $('collector-log-to').value.trim() : '';
-    state.collectorLogs.q = $('collector-log-search') ? $('collector-log-search').value.trim() : '';
-  }
-
-  function buildCollectorLogQuery() {
-    var qs = new URLSearchParams();
-    qs.set('page', state.collectorLogs.page);
-    qs.set('limit', state.collectorLogs.limit);
-
-    if (state.collectorLogs.key) qs.set('key', state.collectorLogs.key);
-    if (state.collectorLogs.status) qs.set('status', state.collectorLogs.status);
-    if (state.collectorLogs.triggerType) qs.set('trigger_type', state.collectorLogs.triggerType);
-    if (state.collectorLogs.from) qs.set('from', state.collectorLogs.from);
-    if (state.collectorLogs.to) qs.set('to', state.collectorLogs.to);
-    if (state.collectorLogs.q) qs.set('q', state.collectorLogs.q);
-
-    return qs.toString();
-  }
-
-  function renderCollectorLogSummary(summary, pagination) {
-    summary = summary || {};
-    pagination = pagination || { total: 0 };
-
-    if ($('clog-total')) $('clog-total').textContent = (summary.total || 0).toLocaleString();
-    if ($('clog-success')) $('clog-success').textContent = (summary.success || 0).toLocaleString();
-    if ($('clog-error')) $('clog-error').textContent = (summary.error || 0).toLocaleString();
-    if ($('clog-skipped')) $('clog-skipped').textContent = (summary.skipped || 0).toLocaleString();
-    if ($('collector-log-total-text')) $('collector-log-total-text').textContent = '총 ' + ((pagination.total || 0).toLocaleString()) + '건';
-  }
-
-  function renderCollectorLogTable(items) {
-    var tbody = $('collector-log-tbody');
-
-    if (!tbody) return;
-
-    if (!items || !items.length) {
-      tbody.innerHTML = '<tr><td colspan="8"><div class="admin-empty">조회된 실행 이력이 없습니다.</div></td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = items.map(function(item) {
-      var selected = item.id === state.collectorLogs.selectedId ? ' selected' : '';
-      var status = collectorRunStatusMeta(item);
-      var resultText = summarizeCollectorLogResult(item);
-      var whenText = fmtDate(item.finished_at || item.started_at || item.createdAt);
-
-      return '<tr class="admin-table-row' + selected + '" data-id="' + item.id + '">' +
-        '<td>' + item.id + '</td>' +
-        '<td>' + esc(whenText) + '</td>' +
-        '<td><strong>' + esc(item.collector_label || item.collector_key || '-') + '</strong><div class="admin-table-sub">' + esc(item.collector_key || '-') + '</div></td>' +
-        '<td>' + esc(collectorTriggerLabel(item.trigger_type)) + '</td>' +
-        '<td><span class="' + status.className + '">' + esc(status.text) + '</span></td>' +
-        '<td style="max-width:220px;word-break:break-word;">' + esc(collectorActorLabel(item)) + '</td>' +
-        '<td><strong>' + esc(item.job_name || '-') + '</strong><div class="admin-table-sub">소요 ' + esc(fmtDuration(item.duration_ms)) + '</div></td>' +
-        '<td style="max-width:320px;word-break:break-word;">' + esc(resultText) + '</td>' +
-      '</tr>';
-    }).join('');
-
-    tbody.querySelectorAll('tr[data-id]').forEach(function(row) {
-      row.addEventListener('click', function() {
-        state.collectorLogs.selectedId = Number(row.dataset.id);
-        renderCollectorLogTable(state.collectorLogs.items);
-        loadCollectorLogDetail(state.collectorLogs.selectedId);
-      });
-    });
-  }
-
-  function renderCollectorLogPagination(pagination) {
-    var wrap = $('collector-log-pagination');
-    if (!wrap) return;
-
-    if (!pagination || pagination.pages <= 1) {
-      wrap.innerHTML = '';
-      return;
-    }
-
-    var html = '';
-    html += '<button class="admin-page-btn" data-page="' + Math.max(1, pagination.page - 1) + '" ' + (pagination.page <= 1 ? 'disabled' : '') + '>이전</button>';
-
-    for (var i = 1; i <= pagination.pages; i++) {
-      if (i < pagination.page - 2 || i > pagination.page + 2) continue;
-      html += '<button class="admin-page-btn' + (i === pagination.page ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
-    }
-
-    html += '<button class="admin-page-btn" data-page="' + Math.min(pagination.pages, pagination.page + 1) + '" ' + (pagination.page >= pagination.pages ? 'disabled' : '') + '>다음</button>';
-
-    wrap.innerHTML = html;
-
-    wrap.querySelectorAll('button[data-page]').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        state.collectorLogs.page = Number(btn.dataset.page);
-        loadCollectorLogs();
-      });
-    });
-  }
-
-  function renderCollectorLogDetail(item) {
-    var panel = $('collector-log-detail');
-    if (!panel) return;
-
-    if (!item) {
-      panel.innerHTML = '<div class="admin-empty">좌측 목록에서 실행 이력을 선택하세요.</div>';
-      return;
-    }
-
-    var status = collectorRunStatusMeta(item);
-    var resultText = summarizeCollectorLogResult(item);
-
-    panel.innerHTML =
-      '<div class="admin-detail-head">' +
-        '<div>' +
-          '<div class="admin-detail-id">실행 이력 #' + item.id + '</div>' +
-          '<h3>' + esc(item.collector_label || item.collector_key || '-') + '</h3>' +
-        '</div>' +
-        '<span class="' + status.className + '">' + esc(status.text) + '</span>' +
-      '</div>' +
-
-      '<div class="admin-detail-grid">' +
-        '<div><span>수집기 키</span><strong>' + esc(item.collector_key || '-') + '</strong></div>' +
-        '<div><span>실행 유형</span><strong>' + esc(collectorTriggerLabel(item.trigger_type)) + '</strong></div>' +
-        '<div><span>작업명</span><strong>' + esc(item.job_name || '-') + '</strong></div>' +
-        '<div><span>종류</span><strong>' + esc(item.kind || '-') + '</strong></div>' +
-        '<div><span>시작 시각</span><strong>' + esc(fmtDateSeconds(item.started_at || item.createdAt)) + '</strong></div>' +
-        '<div><span>종료 시각</span><strong>' + esc(fmtDateSeconds(item.finished_at || item.updatedAt)) + '</strong></div>' +
-        '<div><span>소요 시간</span><strong>' + esc(fmtDuration(item.duration_ms)) + '</strong></div>' +
-        '<div><span>실행자</span><strong>' + esc(collectorActorLabel(item)) + '</strong></div>' +
-      '</div>' +
-
-      '<div class="admin-detail-block">' +
-        '<span>결과 요약</span>' +
-        '<div class="admin-detail-meta" style="margin-top:10px;">' + esc(resultText) + '</div>' +
-      '</div>' +
-
-      '<div class="admin-detail-block">' +
-        '<span>오류 / 스킵 사유</span>' +
-        '<div class="admin-detail-meta" style="margin-top:10px;">' +
-          '오류: ' + esc(item.error_message || '-') + '<br>' +
-          '건너뜀: ' + esc(item.skip_reason || '-') +
-        '</div>' +
-      '</div>' +
-
-      '<div class="admin-detail-block">' +
-        '<span>실행자 상세</span>' +
-        '<div class="admin-detail-meta" style="margin-top:10px;">' +
-          'user_id: ' + esc(item.actor_user_id || '-') + '<br>' +
-          'name: ' + esc(item.actor_name || '-') + '<br>' +
-          'email: ' + esc(item.actor_email || '-') + '<br>' +
-          'role: ' + esc(item.actor_role || '-') +
-        '</div>' +
-      '</div>' +
-
-      '<div class="admin-detail-block">' +
-        '<span>결과 JSON</span>' +
-        '<pre class="admin-detail-message" style="white-space:pre-wrap;">' + esc(prettyJson(item.result)) + '</pre>' +
-      '</div>' +
-
-      '<div class="admin-detail-block">' +
-        '<span>request_payload JSON</span>' +
-        '<pre class="admin-detail-message" style="white-space:pre-wrap;">' + esc(prettyJson(item.request_payload)) + '</pre>' +
-      '</div>' +
-
-      '<div class="admin-detail-block">' +
-        '<span>metadata JSON</span>' +
-        '<pre class="admin-detail-message" style="white-space:pre-wrap;">' + esc(prettyJson(item.metadata)) + '</pre>' +
-      '</div>';
-  }
-
-  async function loadCollectorLogDetail(id) {
-    if (!id) {
-      renderCollectorLogDetail(null);
-      return;
-    }
-
-    try {
-      var resp = await adminRequest('GET', '/collectors/logs/' + encodeURIComponent(id));
-      renderCollectorLogDetail(resp.item || null);
-    } catch (err) {
-      $('collector-log-detail').innerHTML = '<div class="admin-empty">' + esc(err.message || '실행 이력 상세를 불러오지 못했습니다.') + '</div>';
-    }
-  }
-
-  async function loadCollectorLogs() {
-    try {
-      syncCollectorLogFilterInputs();
-
-      if ($('collector-log-loading')) $('collector-log-loading').style.display = 'block';
-      if ($('collector-log-empty-top')) $('collector-log-empty-top').textContent = '';
-
-      var resp = await adminRequest('GET', '/collectors/logs?' + buildCollectorLogQuery());
-
-      state.collectorLogs.items = resp.data || [];
-      state.collectorLogs.pagination = resp.pagination || null;
-      state.collectorLogs.summary = resp.summary || null;
-
-      if (!state.collectorLogs.selectedId && state.collectorLogs.items.length) {
-        state.collectorLogs.selectedId = state.collectorLogs.items[0].id;
-      }
-
-      if (
-        state.collectorLogs.selectedId &&
-        !state.collectorLogs.items.some(function(item) { return item.id === state.collectorLogs.selectedId; })
-      ) {
-        state.collectorLogs.selectedId = state.collectorLogs.items.length ? state.collectorLogs.items[0].id : null;
-      }
-
-      renderCollectorLogSummary(resp.summary || {}, resp.pagination || {});
-      renderCollectorLogTable(state.collectorLogs.items);
-      renderCollectorLogPagination(resp.pagination || {});
-      if (state.collectorLogs.selectedId) {
-        loadCollectorLogDetail(state.collectorLogs.selectedId);
-      } else {
-        renderCollectorLogDetail(null);
-      }
-    } catch (err) {
-      $('collector-log-tbody').innerHTML = '<tr><td colspan="8"><div class="admin-empty">' + esc(err.message || '실행 이력을 불러오지 못했습니다.') + '</div></td></tr>';
-      $('collector-log-detail').innerHTML = '<div class="admin-empty">수집기 실행 이력 API 연결 상태를 확인해주세요.</div>';
-      notifyError(err.message || '수집 실행 이력 조회 실패');
-    } finally {
-      if ($('collector-log-loading')) $('collector-log-loading').style.display = 'none';
+      if (typeof Feedback !== 'undefined') Feedback.error(err.message || '대시보드 조회 실패');
     }
   }
 
@@ -1028,9 +723,15 @@
         renderMemberDetail(updated);
         loadDashboard();
 
-        notifySuccess(resp.message || '회원 정보가 저장되었습니다.');
+        if (typeof Feedback !== 'undefined') {
+          Feedback.success(resp.message || '회원 정보가 저장되었습니다.');
+        }
       } catch (err) {
-        notifyError(err.message || '회원 정보 저장 실패');
+        if (typeof Feedback !== 'undefined') {
+          Feedback.error(err.message || '회원 정보 저장 실패');
+        } else {
+          alert(err.message || '회원 정보 저장 실패');
+        }
       } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-floppy-disk"></i> 저장';
@@ -1081,7 +782,7 @@
     } catch (err) {
       $('members-tbody').innerHTML = '<tr><td colspan="5"><div class="admin-empty">' + esc(err.message || '회원 목록을 불러오지 못했습니다.') + '</div></td></tr>';
       $('member-detail').innerHTML = '<div class="admin-empty">회원 API 연결 상태를 확인해주세요.</div>';
-      notifyError(err.message || '회원 목록 조회 실패');
+      if (typeof Feedback !== 'undefined') Feedback.error(err.message || '회원 목록 조회 실패');
     } finally {
       $('member-loading').style.display = 'none';
     }
@@ -1217,7 +918,7 @@
     } catch (err) {
       $('inquiry-tbody').innerHTML = '<tr><td colspan="6"><div class="admin-empty">' + esc(err.message || '목록을 불러오지 못했습니다.') + '</div></td></tr>';
       $('inquiry-detail').innerHTML = '<div class="admin-empty">관리자 API 연결 상태를 확인해주세요.</div>';
-      notifyError(err.message || '문의 목록 조회 실패');
+      if (typeof Feedback !== 'undefined') Feedback.error(err.message || '문의 목록 조회 실패');
     } finally {
       $('inquiry-loading').style.display = 'none';
     }
@@ -1321,42 +1022,79 @@
       renderTopPages(resp.topPages || []);
       renderRecentVisits(resp.recent || []);
     } catch (err) {
-      $('vis-daily').innerHTML = '<div class="admin-empty">' + esc(err.message || '방문 통계를 불러오지 못했습니다.') + '</div>';
+      $('vis-daily').innerHTML = '<div class="admin-empty">' + esc(err.message || '방문자 통계를 불러오지 못했습니다.') + '</div>';
       $('vis-top-pages').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
       $('vis-recent').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
-      notifyError(err.message || '방문 통계 조회 실패');
+      if (typeof Feedback !== 'undefined') Feedback.error(err.message || '방문자 통계 조회 실패');
     }
   }
 
   /* ─────────────────────────────
-     Event bindings
+     Boot
   ───────────────────────────── */
-  function bindMenuEvents() {
-    document.querySelectorAll('.admin-menu-btn').forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        showSection(btn.dataset.section);
-      });
-    });
+  async function openSection(name) {
+    showSection(name);
+
+    if (name === 'dashboard') {
+      await loadDashboard();
+      return;
+    }
+
+    if (name === 'members') {
+      await loadUsers();
+      return;
+    }
+
+    if (name === 'stats') {
+      await loadVisitorStats();
+      return;
+    }
+
+    if (name === 'inquiries') {
+      await loadInquiries();
+    }
   }
 
-  function bindMemberEvents() {
-    if ($('member-role-filter')) {
+  async function boot() {
+    if (!PublicAuth.isLoggedIn()) {
+      window.location.href = '/login';
+      return;
+    }
+
+    try {
+      var meResp = await PublicAuth.getMe();
+      var me = meResp.user || null;
+      state.me = me;
+
+      if (!me || me.role !== 'admin') {
+        alert('관리자만 접근할 수 있습니다.');
+        window.location.href = '/';
+        return;
+      }
+
+      PublicAuth.updateHeader();
+      $('admin-name').textContent = me.nickname || me.email || '관리자';
+      $('admin-email').textContent = me.email || '';
+      $('header-nickname').textContent = me.nickname || me.email || '관리자';
+
+      document.querySelectorAll('.admin-menu-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          openSection(btn.dataset.section);
+        });
+      });
+
       $('member-role-filter').addEventListener('change', function() {
         state.users.role = this.value;
         state.users.page = 1;
         loadUsers();
       });
-    }
 
-    if ($('member-search-btn')) {
       $('member-search-btn').addEventListener('click', function() {
         state.users.q = $('member-search').value.trim();
         state.users.page = 1;
         loadUsers();
       });
-    }
 
-    if ($('member-search')) {
       $('member-search').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
           state.users.q = $('member-search').value.trim();
@@ -1364,27 +1102,19 @@
           loadUsers();
         }
       });
-    }
-  }
 
-  function bindInquiryEvents() {
-    if ($('inq-status-filter')) {
       $('inq-status-filter').addEventListener('change', function() {
         state.inquiries.status = this.value;
         state.inquiries.page = 1;
         loadInquiries();
       });
-    }
 
-    if ($('inq-search-btn')) {
       $('inq-search-btn').addEventListener('click', function() {
         state.inquiries.q = $('inq-search').value.trim();
         state.inquiries.page = 1;
         loadInquiries();
       });
-    }
 
-    if ($('inq-search')) {
       $('inq-search').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
           state.inquiries.q = $('inq-search').value.trim();
@@ -1392,114 +1122,13 @@
           loadInquiries();
         }
       });
-    }
-  }
 
-  function bindCollectorLogEvents() {
-    if ($('collector-log-search-btn')) {
-      $('collector-log-search-btn').addEventListener('click', function() {
-        readCollectorLogFiltersFromInputs();
-        state.collectorLogs.page = 1;
-        loadCollectorLogs();
-      });
-    }
-
-    if ($('collector-log-reset-btn')) {
-      $('collector-log-reset-btn').addEventListener('click', function() {
-        state.collectorLogs.page = 1;
-        state.collectorLogs.key = 'all';
-        state.collectorLogs.status = 'all';
-        state.collectorLogs.triggerType = 'all';
-        state.collectorLogs.from = '';
-        state.collectorLogs.to = '';
-        state.collectorLogs.q = '';
-        syncCollectorLogFilterInputs();
-        loadCollectorLogs();
-      });
-    }
-
-    ['collector-log-key-filter', 'collector-log-status-filter', 'collector-log-trigger-filter'].forEach(function(id) {
-      if ($(id)) {
-        $(id).addEventListener('change', function() {
-          readCollectorLogFiltersFromInputs();
-          state.collectorLogs.page = 1;
-          loadCollectorLogs();
-        });
-      }
-    });
-
-    ['collector-log-from', 'collector-log-to'].forEach(function(id) {
-      if ($(id)) {
-        $(id).addEventListener('change', function() {
-          readCollectorLogFiltersFromInputs();
-          state.collectorLogs.page = 1;
-          loadCollectorLogs();
-        });
-      }
-    });
-
-    if ($('collector-log-search')) {
-      $('collector-log-search').addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-          readCollectorLogFiltersFromInputs();
-          state.collectorLogs.page = 1;
-          loadCollectorLogs();
-        }
-      });
-    }
-  }
-
-  function fillProfile(user) {
-    if (!user) return;
-
-    var nickname = user.nickname || user.name || '관리자';
-    var email = user.email || '-';
-
-    if ($('header-nickname')) $('header-nickname').textContent = nickname;
-    if ($('admin-name')) $('admin-name').textContent = nickname;
-    if ($('admin-email')) $('admin-email').textContent = email;
-  }
-
-  async function bootstrap() {
-    try {
-      if (typeof PublicAuth !== 'undefined' && PublicAuth && typeof PublicAuth.updateHeader === 'function') {
-        PublicAuth.updateHeader();
-      }
-
-      var currentUser = null;
-
-      if (typeof PublicAuth !== 'undefined' && PublicAuth && typeof PublicAuth.getUser === 'function') {
-        currentUser = PublicAuth.getUser();
-      }
-
-      if (!currentUser) {
-        window.location.href = '/';
-        return;
-      }
-
-      if (currentUser.role !== 'admin') {
-        notifyError('관리자만 접근할 수 있습니다.');
-        window.location.href = '/';
-        return;
-      }
-
-      state.me = currentUser;
-      fillProfile(currentUser);
-
-      bindMenuEvents();
-      bindMemberEvents();
-      bindInquiryEvents();
-      bindCollectorLogEvents();
-
-      showSection('dashboard');
+      await openSection('dashboard');
     } catch (err) {
-      notifyError(err.message || '관리자 페이지 초기화에 실패했습니다.');
+      alert(err.message || '관리자 정보를 확인할 수 없습니다.');
+      window.location.href = '/login';
     }
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bootstrap);
-  } else {
-    bootstrap();
-  }
+  document.addEventListener('DOMContentLoaded', boot);
 })();
