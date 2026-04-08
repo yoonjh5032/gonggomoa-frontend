@@ -108,6 +108,121 @@
     $('dash-inquiries-received').textContent = (summary.inquiriesReceived || 0).toLocaleString();
     $('dash-visitors-today').textContent = (summary.visitorsToday || 0).toLocaleString();
     $('dash-pageviews-today').textContent = (summary.pageviewsToday || 0).toLocaleString();
+
+    if ($('dash-collectors-enabled')) {
+      $('dash-collectors-enabled').textContent = (summary.collectorsEnabled || 0).toLocaleString();
+    }
+
+    if ($('dash-collectors-running')) {
+      $('dash-collectors-running').textContent = (summary.collectorsRunning || 0).toLocaleString();
+    }
+  }
+
+  function fmtDuration(ms) {
+    var value = Number(ms || 0);
+    if (!value || value < 1000) return '-';
+
+    var seconds = Math.round(value / 1000);
+    if (seconds < 60) return seconds + '초';
+
+    var minutes = Math.floor(seconds / 60);
+    var remainSeconds = seconds % 60;
+    if (minutes < 60) {
+      return minutes + '분' + (remainSeconds ? ' ' + remainSeconds + '초' : '');
+    }
+
+    var hours = Math.floor(minutes / 60);
+    var remainMinutes = minutes % 60;
+    return hours + '시간' + (remainMinutes ? ' ' + remainMinutes + '분' : '');
+  }
+
+  function monitorStatusLabel(item) {
+    if (!item || item.enabled === false) {
+      return { text: '비활성', className: 'admin-status admin-status-received' };
+    }
+
+    if (item.running) {
+      return { text: '실행 중', className: 'admin-status admin-status-in_progress' };
+    }
+
+    if (item.lastErrorAt && (!item.lastSuccessAt || new Date(item.lastErrorAt) > new Date(item.lastSuccessAt))) {
+      return { text: '최근 오류', className: 'admin-status admin-status-received' };
+    }
+
+    return { text: '정상', className: 'admin-status admin-status-done' };
+  }
+
+  function summarizeCollectorResult(item) {
+    var result = item && item.lastResult;
+    if (!result || typeof result !== 'object') return '-';
+
+    var parts = [];
+
+    if (result.new !== undefined) parts.push('신규 ' + result.new);
+    if (result.updated !== undefined) parts.push('갱신 ' + result.updated);
+    if (result.errors !== undefined) parts.push('에러 ' + result.errors);
+    if (result.parsed !== undefined) parts.push('파싱 ' + result.parsed);
+    if (result.kept !== undefined) parts.push('유지 ' + result.kept);
+    if (result.newCount !== undefined) parts.push('신규 ' + result.newCount);
+    if (result.updatedCount !== undefined) parts.push('갱신 ' + result.updatedCount);
+    if (result.errorCount !== undefined) parts.push('에러 ' + result.errorCount);
+    if (result.parsedCount !== undefined) parts.push('파싱 ' + result.parsedCount);
+    if (result.deleted !== undefined) parts.push('삭제 ' + result.deleted);
+
+    return parts.length ? parts.join(' / ') : '-';
+  }
+
+  function renderCollectorStatus(payload) {
+    var wrap = $('dashboard-collector-status');
+    var updatedEl = $('collector-status-updated');
+
+    if (!wrap) return;
+
+    var items = payload && Array.isArray(payload.items) ? payload.items : [];
+
+    if (updatedEl) {
+      updatedEl.textContent = payload && payload.generatedAt ? ('업데이트: ' + fmtDate(payload.generatedAt)) : '-';
+    }
+
+    if (!items.length) {
+      wrap.innerHTML = '<div class="admin-empty">수집 상태 데이터가 없습니다.</div>';
+      return;
+    }
+
+    wrap.innerHTML =
+      '<div class="admin-table-wrap">' +
+        '<table class="admin-table">' +
+          '<thead><tr><th>대상</th><th>상태</th><th>최근 작업</th><th>최근 결과</th><th>마지막 성공</th><th>최근 오류</th></tr></thead>' +
+          '<tbody>' +
+            items.map(function(item) {
+              var status = monitorStatusLabel(item);
+              var lastJob = item.lastJob
+                ? '<strong>' + esc(item.lastJob) + '</strong>'
+                  + '<div class="admin-table-sub">시작: ' + esc(fmtDate(item.lastStartedAt)) + '</div>'
+                  + '<div class="admin-table-sub">종료: ' + esc(fmtDate(item.lastFinishedAt)) + ' · 소요 ' + esc(fmtDuration(item.lastDurationMs)) + '</div>'
+                : '-';
+
+              var lastError = item.lastErrorMessage
+                ? '<div style="max-width:260px;word-break:break-word;">' + esc(item.lastErrorMessage) + '</div>'
+                  + '<div class="admin-table-sub">' + esc(fmtDate(item.lastErrorAt)) + '</div>'
+                : '-';
+
+              var schedules = Array.isArray(item.schedules) && item.schedules.length
+                ? item.schedules.join(', ')
+                : '-';
+
+              return '<tr>' +
+                '<td><strong>' + esc(item.label || item.key) + '</strong><div class="admin-table-sub">' + esc(item.key || '-') + ' · ' + esc(schedules) + '</div></td>' +
+                '<td><span class="' + status.className + '">' + esc(status.text) + '</span></td>' +
+                '<td>' + lastJob + '</td>' +
+                '<td>' + esc(summarizeCollectorResult(item)) + '</td>' +
+                '<td>' + esc(fmtDate(item.lastSuccessAt)) + '</td>' +
+                '<td>' + lastError + '</td>' +
+              '</tr>';
+            }).join('') +
+          '</tbody>' +
+        '</table>' +
+      '</div>';
   }
 
   function renderDashboardRecentUsers(list) {
@@ -166,16 +281,26 @@
     try {
       $('dashboard-recent-users').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
       $('dashboard-recent-inquiries').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+      if ($('dashboard-collector-status')) {
+        $('dashboard-collector-status').innerHTML = '<div class="admin-empty">불러오는 중...</div>';
+      }
 
       var resp = await PublicAPI.getAdminDashboard();
       state.dashboard = resp;
 
       renderDashboardSummary(resp.summary || {});
+      renderCollectorStatus(resp.collectorStatus || {});
       renderDashboardRecentUsers(resp.recentUsers || []);
       renderDashboardRecentInquiries(resp.recentInquiries || []);
     } catch (err) {
       $('dashboard-recent-users').innerHTML = '<div class="admin-empty">' + esc(err.message || '대시보드를 불러오지 못했습니다.') + '</div>';
       $('dashboard-recent-inquiries').innerHTML = '<div class="admin-empty">데이터를 불러오지 못했습니다.</div>';
+      if ($('dashboard-collector-status')) {
+        $('dashboard-collector-status').innerHTML = '<div class="admin-empty">수집 상태를 불러오지 못했습니다.</div>';
+      }
+      if ($('collector-status-updated')) {
+        $('collector-status-updated').textContent = '-';
+      }
       if (typeof Feedback !== 'undefined') Feedback.error(err.message || '대시보드 조회 실패');
     }
   }
