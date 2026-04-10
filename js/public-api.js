@@ -4,12 +4,81 @@
 const PublicAPI = (function() {
   'use strict';
 
-  // Cloudflare Pages Functions 프록시 사용
-  // 필요 시 <script>에서 window.__PUBLIC_API_BASE__ 로 강제 override 가능
   const API_BASE = String(window.__PUBLIC_API_BASE__ || '/api').replace(/\/$/, '');
+  const API_TIMEOUT_MS = Math.max(parseInt(window.__PUBLIC_API_TIMEOUT_MS__, 10) || 15000, 3000);
 
   function getToken() {
     return localStorage.getItem('gm_token') || '';
+  }
+
+  function buildError(message, meta) {
+    const err = new Error(message || '요청 처리 중 오류가 발생했습니다.');
+    err.name = 'PublicApiError';
+    Object.assign(err, meta || {});
+    return err;
+  }
+
+  function readJsonSafely(resp) {
+    return resp.json().catch(function() { return {}; });
+  }
+
+  function classifyHttpError(resp, data, preview) {
+    const baseMessage = data.error || data.message || '';
+
+    if (resp.status === 400) {
+      return buildError(baseMessage || '요청 값이 올바르지 않습니다. 입력 조건을 다시 확인해주세요.', {
+        status: resp.status,
+        retryable: false,
+        code: 'bad_request'
+      });
+    }
+
+    if (resp.status === 401) {
+      return buildError('로그인이 필요합니다. 다시 로그인 후 시도해주세요.', {
+        status: resp.status,
+        retryable: false,
+        code: 'unauthorized'
+      });
+    }
+
+    if (resp.status === 403) {
+      return buildError('접근 권한이 없습니다. 관리자 권한 또는 로그인 상태를 확인해주세요.', {
+        status: resp.status,
+        retryable: false,
+        code: 'forbidden'
+      });
+    }
+
+    if (resp.status === 404) {
+      return buildError(baseMessage || '요청한 데이터를 찾을 수 없습니다.', {
+        status: resp.status,
+        retryable: false,
+        code: 'not_found'
+      });
+    }
+
+    if (resp.status === 429) {
+      return buildError('요청이 많아 잠시 제한되었습니다. 잠시 후 다시 시도해주세요.', {
+        status: resp.status,
+        retryable: true,
+        code: 'rate_limited'
+      });
+    }
+
+    if (resp.status >= 500) {
+      return buildError(baseMessage || '서버가 일시적으로 원활하지 않습니다. 잠시 후 다시 시도해주세요.', {
+        status: resp.status,
+        retryable: true,
+        code: 'server_error'
+      });
+    }
+
+    return buildError(baseMessage || '요청 처리에 실패했습니다.', {
+      status: resp.status,
+      retryable: resp.status >= 500,
+      code: 'request_failed',
+      preview: preview || ''
+    });
   }
 
   async function request(method, path, body) {
@@ -29,30 +98,68 @@ const PublicAPI = (function() {
       opts.body = JSON.stringify(body);
     }
 
-    const resp = await fetch(API_BASE + path, opts);
+    let controller = null;
+    let timeoutId = null;
+
+    if (typeof AbortController !== 'undefined') {
+      controller = new AbortController();
+      opts.signal = controller.signal;
+      timeoutId = setTimeout(function() {
+        controller.abort();
+      }, API_TIMEOUT_MS);
+    }
+
+    let resp;
+    try {
+      resp = await fetch(API_BASE + path, opts);
+    } catch (err) {
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (err && err.name === 'AbortError') {
+        throw buildError('응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.', {
+          status: 0,
+          retryable: true,
+          code: 'timeout'
+        });
+      }
+
+      throw buildError('네트워크 연결을 확인한 뒤 다시 시도해주세요.', {
+        status: 0,
+        retryable: true,
+        code: 'network_error',
+        cause: err
+      });
+    }
+
+    if (timeoutId) clearTimeout(timeoutId);
+
     const contentType = String(resp.headers.get('content-type') || '');
 
-    // 지금 서비스 구조상 모든 API 응답은 JSON이어야 함
     if (!contentType.includes('application/json')) {
       const rawText = await resp.text().catch(function() { return ''; });
-      const preview = rawText ? rawText.slice(0, 120) : '';
+      const preview = rawText ? rawText.slice(0, 160) : '';
 
-      throw new Error(
-        'API 응답이 JSON이 아닙니다. Cloudflare /api 프록시 설정을 확인하세요.'
-        + (preview ? ' (' + preview.replace(/\s+/g, ' ').trim() + ')' : '')
+      throw buildError(
+        'API 응답 형식이 올바르지 않습니다. 프록시 또는 서버 설정을 확인해주세요.'
+        + (preview ? ' (' + preview.replace(/\s+/g, ' ').trim() + ')' : ''),
+        {
+          status: resp.status,
+          retryable: resp.status >= 500,
+          code: 'invalid_content_type',
+          preview: preview
+        }
       );
     }
 
-    const data = await resp.json().catch(function() { return {}; });
+    const data = await readJsonSafely(resp);
 
     if (!resp.ok) {
-      throw new Error(data.error || data.message || '요청 실패');
+      throw classifyHttpError(resp, data, '');
     }
 
     return data;
   }
 
-  // ── 공고 목록 조회 ─────────────────────────────────────
   async function getNotices(params) {
     params = params || {};
     const qs = new URLSearchParams();
@@ -84,7 +191,6 @@ const PublicAPI = (function() {
     return request('GET', '/notices?' + qs.toString());
   }
 
-  // ── 통계 / 공고 상세 ───────────────────────────────────
   async function getStats() {
     return request('GET', '/notices/stats');
   }
@@ -97,12 +203,10 @@ const PublicAPI = (function() {
     return request('GET', '/notices/' + encodeURIComponent(id));
   }
 
-  // ── 문의 ───────────────────────────────────────────────
   async function createInquiry(data) {
     return request('POST', '/inquiries', data);
   }
 
-  // ── 관리자: 문의 ───────────────────────────────────────
   async function getAdminInquiries(params) {
     params = params || {};
     const qs = new URLSearchParams();
@@ -115,7 +219,6 @@ const PublicAPI = (function() {
     return request('GET', '/admin/inquiries?' + qs.toString());
   }
 
-  // ── 관리자: 대시보드 / 회원 ────────────────────────────
   async function getAdminDashboard() {
     return request('GET', '/admin/dashboard');
   }
@@ -140,7 +243,6 @@ const PublicAPI = (function() {
     return request('PATCH', '/admin/users/' + encodeURIComponent(id), data);
   }
 
-  // ── 분석 ───────────────────────────────────────────────
   async function trackPageView(data) {
     return request('POST', '/analytics/pageview', data);
   }
@@ -157,6 +259,7 @@ const PublicAPI = (function() {
 
   return {
     API_BASE,
+    API_TIMEOUT_MS,
     request,
     getNotices,
     getStats,

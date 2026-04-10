@@ -65,6 +65,14 @@
 
     .empty-state { text-align:center; padding:60px 20px; color:#9ca3af; }
     .empty-state i { font-size:2.5rem; display:block; margin-bottom:12px; color:#d1d5db; }
+    .empty-state strong { display:block; color:#111827; font-size:1rem; margin-bottom:10px; }
+    .empty-state p { margin:0; font-size:.88rem; line-height:1.7; }
+    .empty-state-actions { display:flex; justify-content:center; gap:10px; margin-top:18px; flex-wrap:wrap; }
+    .empty-state-btn {
+      padding:9px 14px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; color:#334155;
+      cursor:pointer; font-size:.82rem; font-weight:700;
+    }
+    .empty-state-btn.primary { background:#1d4ed8; color:#fff; border-color:#1d4ed8; }
 
     @media (max-width:768px) {
       .notice-table { font-size:.8rem; }
@@ -286,24 +294,23 @@
   }
 
   function normalizeKeywords(list) {
-  if (typeof list === 'string') {
-    try {
-      var parsed = JSON.parse(list);
-      list = Array.isArray(parsed) ? parsed : String(list).split(',');
-    } catch (e) {
-      list = String(list).split(',');
+    if (typeof list === 'string') {
+      try {
+        var parsed = JSON.parse(list);
+        list = Array.isArray(parsed) ? parsed : String(list).split(',');
+      } catch (e) {
+        list = String(list).split(',');
+      }
     }
+
+    if (!Array.isArray(list)) list = [];
+
+    return list
+      .map(function(v){ return String(v || '').trim(); })
+      .filter(Boolean)
+      .filter(function(v, i, arr){ return arr.indexOf(v) === i; })
+      .slice(0, 10);
   }
-
-  if (!Array.isArray(list)) list = [];
-
-  return list
-    .map(function(v){ return String(v || '').trim(); })
-    .filter(Boolean)
-    .filter(function(v, i, arr){ return arr.indexOf(v) === i; })
-    .slice(0, 10);
-}
-
 
   function formatKstDate(dateStr) {
     if (!dateStr) return '-';
@@ -332,6 +339,76 @@
       '<tr><td colspan="6"><div class="empty-state">' + html + '</div></td></tr>';
     document.getElementById('pagination').innerHTML = '';
     document.getElementById('notices-total').textContent = '0건';
+  }
+
+  function renderLoadError(err, options) {
+    options = options || {};
+    var title = options.title || '데이터를 불러오지 못했습니다';
+    var retryText = options.retryText || '다시 시도';
+    var body = document.getElementById('table-body');
+    var message = readErrorMessage(err, '서버 연결이 원활하지 않습니다. 잠시 후 다시 시도해주세요.');
+
+    body.innerHTML =
+      '<tr><td colspan="6">' +
+        '<div class="empty-state">' +
+          '<i class="fas fa-triangle-exclamation" style="color:#f59e0b"></i>' +
+          '<strong>' + esc(title) + '</strong>' +
+          '<p>' + esc(message) + '</p>' +
+          '<div class="empty-state-actions">' +
+            '<button type="button" class="empty-state-btn primary" id="notice-retry-btn">' + esc(retryText) + '</button>' +
+            '<button type="button" class="empty-state-btn" id="notice-reset-btn">필터 초기화</button>' +
+          '</div>' +
+        '</div>' +
+      '</td></tr>';
+
+    document.getElementById('pagination').innerHTML = '';
+    document.getElementById('notices-total').textContent = '0건';
+
+    var retryBtn = document.getElementById('notice-retry-btn');
+    var resetBtn = document.getElementById('notice-reset-btn');
+
+    if (retryBtn) {
+      retryBtn.addEventListener('click', function() {
+        loadPage(currentPage || 1);
+      });
+    }
+
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function() {
+        document.getElementById('f-search').value = '';
+        document.getElementById('f-source').value = '';
+        document.getElementById('f-type').value = '';
+        document.getElementById('f-sort').value = 'recent';
+        interestMode = false;
+        interestKeywords = [];
+        params.delete('deadline');
+        updateInterestUi();
+        loadPage(1);
+      });
+    }
+
+    if (typeof Feedback !== 'undefined' && Feedback && typeof Feedback.error === 'function') {
+      Feedback.error(message, { duration: 5500 });
+    }
+  }
+
+  function readErrorMessage(err, fallback) {
+    if (!err) return fallback;
+
+    if (err.code === 'timeout') {
+      return '응답 시간이 오래 걸리고 있습니다. 잠시 후 다시 시도해주세요.';
+    }
+
+    if (err.code === 'network_error') {
+      return '네트워크 연결이 끊겼거나 서버에 연결할 수 없습니다. 연결 상태를 확인해주세요.';
+    }
+
+    if (err.code === 'rate_limited') {
+      return '조회 요청이 많아 잠시 제한되었습니다. 1분 정도 후 다시 시도해주세요.';
+    }
+
+    if (err.message) return err.message;
+    return fallback;
   }
 
   function updateInterestUi() {
@@ -408,14 +485,14 @@
 
       if (interestMode) {
         if (!PublicAuth || !PublicAuth.isLoggedIn()) {
-          setEmpty('<i class="fas fa-lock"></i>로그인 후 관심 키워드 공고를 볼 수 있습니다');
+          setEmpty('<i class="fas fa-lock"></i><strong>로그인이 필요합니다</strong><p>로그인 후 관심 키워드 공고를 볼 수 있습니다.</p>');
           return;
         }
 
         keywordList = await ensureInterestKeywords();
 
         if (!keywordList.length) {
-          setEmpty('<i class="fas fa-star"></i>마이페이지에서 관심 키워드를 먼저 등록해주세요');
+          setEmpty('<i class="fas fa-star"></i><strong>관심 키워드가 비어 있습니다</strong><p>마이페이지에서 관심 키워드를 먼저 등록해주세요.</p>');
           return;
         }
       }
@@ -437,7 +514,7 @@
       document.getElementById('notices-total').textContent = total.toLocaleString() + '건';
 
       if (!list.length) {
-        body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-inbox"></i>조건에 맞는 공고가 없습니다</div></td></tr>';
+        body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-inbox"></i><strong>조회 결과가 없습니다</strong><p>검색어 또는 필터 조건을 바꿔 다시 시도해주세요.</p></div></td></tr>';
         document.getElementById('pagination').innerHTML = '';
         return;
       }
@@ -462,7 +539,10 @@
 
       renderPagination(total);
     } catch(e) {
-      body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-exclamation-circle"></i>데이터를 불러올 수 없습니다</div></td></tr>';
+      renderLoadError(e, {
+        title: '공고 목록을 불러오지 못했습니다',
+        retryText: '현재 페이지 다시 시도'
+      });
     }
   };
 
@@ -488,13 +568,12 @@
   }
 
   window.goDetail = function(id, url) {
-  if (url && url !== 'undefined' && url !== '') {
-    window.open(url, '_blank');
-  } else {
-    window.location.href = '/notices?id=' + id;
-  }
-};
-
+    if (url && url !== 'undefined' && url !== '') {
+      window.open(url, '_blank');
+    } else {
+      window.location.href = '/notices?id=' + id;
+    }
+  };
 
   updateInterestUi();
   loadPage(1);
