@@ -34,6 +34,8 @@ export function createInquiriesTab({ api, feedback }) {
     mounted: false,
     loading: false,
     saving: false,
+    detailLoading: false,
+    detailError: '',
     page: 1,
     limit: 12,
     status: 'all',
@@ -143,8 +145,37 @@ export function createInquiriesTab({ api, feedback }) {
     }).join('');
   }
 
+  function bindDetailEvents() {
+    const saveBtn = root.querySelector('#inquiry-save-btn');
+    if (saveBtn) saveBtn.addEventListener('click', saveDetail);
+
+    const retryBtn = root.querySelector('#inquiry-detail-retry-btn');
+    if (retryBtn) {
+      retryBtn.addEventListener('click', async () => {
+        if (!state.selectedId) return;
+        await loadDetail(state.selectedId);
+      });
+    }
+  }
+
   function renderDetail() {
     const el = root.querySelector('#inquiries-detail');
+
+    if (state.detailLoading) {
+      el.innerHTML = `<div class="admin-empty">문의 상세를 불러오는 중...</div>`;
+      return;
+    }
+
+    if (state.detailError) {
+      el.innerHTML = `
+        <div class="admin-error" style="display:grid;gap:12px;">
+          <div>${esc(state.detailError)}</div>
+          <button type="button" class="admin-btn" id="inquiry-detail-retry-btn">다시 시도</button>
+        </div>
+      `;
+      bindDetailEvents();
+      return;
+    }
 
     if (!state.detail) {
       el.innerHTML = `<div class="admin-empty">선택된 문의가 없습니다.</div>`;
@@ -182,7 +213,8 @@ export function createInquiriesTab({ api, feedback }) {
         <span>접속 정보</span>
         <div class="admin-detail-meta">
           페이지: ${esc(item.pageUrl || item.page_url || '-')}<br />
-          리퍼러: ${esc(item.referrer || '-')}
+          리퍼러: ${esc(item.referrer || '-')}<br />
+          처리자: ${esc(item.processedByUser?.nickname || item.processedBy || '-')}
         </div>
       </div>
 
@@ -197,26 +229,30 @@ export function createInquiriesTab({ api, feedback }) {
 
           <textarea id="inquiry-admin-memo" class="admin-textarea" rows="4" placeholder="처리 메모를 입력하세요.">${esc(item.adminMemo || '')}</textarea>
 
-          <button type="button" class="admin-btn" id="inquiry-save-btn">
+          <button type="button" class="admin-btn" id="inquiry-save-btn" ${state.saving ? 'disabled' : ''}>
             ${state.saving ? '저장 중...' : '상태 저장'}
           </button>
         </div>
       </div>
     `;
 
-    const saveBtn = root.querySelector('#inquiry-save-btn');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', saveDetail);
-    }
+    bindDetailEvents();
   }
 
   async function loadDetail(id) {
+    state.detailLoading = true;
+    state.detailError = '';
+    renderDetail();
+
     try {
       state.detail = await api.getAdminInquiryDetail(id);
-      renderDetail();
     } catch (err) {
       console.error('[INQUIRY_DETAIL_LOAD]', err);
-      feedback.error(err.message || '문의 상세를 불러오지 못했습니다.');
+      state.detail = null;
+      state.detailError = err.message || '문의 상세를 불러오지 못했습니다.';
+    } finally {
+      state.detailLoading = false;
+      renderDetail();
     }
   }
 
@@ -230,11 +266,7 @@ export function createInquiriesTab({ api, feedback }) {
       state.saving = true;
       renderDetail();
 
-      await api.updateAdminInquiry(state.selectedId, {
-        status,
-        adminMemo
-      });
-
+      await api.updateAdminInquiry(state.selectedId, { status, adminMemo });
       feedback.success('문의 상태가 저장되었습니다.');
       await loadList();
       await loadDetail(state.selectedId);
@@ -274,21 +306,20 @@ export function createInquiriesTab({ api, feedback }) {
       renderSummary();
       renderTable();
 
-      root.querySelector('#inquiries-total-text').textContent =
-        `총 ${Number(state.pagination?.total || 0).toLocaleString()}건`;
+      root.querySelector('#inquiries-total-text').textContent = `총 ${Number(state.pagination?.total || 0).toLocaleString()}건`;
       root.querySelector('#inquiries-pagination').innerHTML = renderPagination(state.pagination);
 
       if (state.selectedId) {
         await loadDetail(state.selectedId);
       } else {
         state.detail = null;
+        state.detailError = '';
         renderDetail();
       }
     } catch (err) {
       console.error('[INQUIRIES_LIST_LOAD]', err);
       feedback.error(err.message || '문의 목록을 불러오지 못했습니다.');
-      root.querySelector('#inquiries-tbody').innerHTML =
-        `<tr><td colspan="6"><div class="admin-error">${esc(err.message || '오류')}</div></td></tr>`;
+      root.querySelector('#inquiries-tbody').innerHTML = `<tr><td colspan="6"><div class="admin-error">${esc(err.message || '오류')}</div></td></tr>`;
     } finally {
       state.loading = false;
     }
