@@ -118,7 +118,7 @@
     <select id="f-source">
       <option value="">전체 출처</option>
       <option value="g2b_api">나라장터</option>
-      <option value="seoul_board">서울시</option>
+      <option value="seoul_board">서울시·구청</option>
       <option value="seoul_contract">계약마당</option>
     </select>
     <select id="f-type">
@@ -169,7 +169,7 @@
 <footer class="pub-footer">
   <div class="pub-footer-inner">
     <div class="footer-logo"><i class="fas fa-building-columns"></i> 공고모아</div>
-    <p class="footer-desc">나라장터·서울시·지자체 입찰공고 통합 검색 서비스</p>
+    <p class="footer-desc">나라장터·서울시·구청 게시판·계약마당 공고 통합 검색 서비스</p>
   </div>
 </footer>
 
@@ -290,7 +290,7 @@
   }
 
   function srcLabel(s) {
-    return {g2b_api:'나라장터',seoul_board:'서울시',seoul_contract:'계약마당'}[s] || s;
+    return {g2b_api:'나라장터',seoul_board:'서울시·구청',seoul_contract:'계약마당'}[s] || s;
   }
 
   function normalizeKeywords(list) {
@@ -514,7 +514,12 @@
       document.getElementById('notices-total').textContent = total.toLocaleString() + '건';
 
       if (!list.length) {
-        body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-inbox"></i><strong>조회 결과가 없습니다</strong><p>검색어 또는 필터 조건을 바꿔 다시 시도해주세요.</p></div></td></tr>';
+        var selectedSource = document.getElementById('f-source').value;
+        var emptyTitle = selectedSource === 'seoul_board' ? '서울시·구청 게시판 공고가 없습니다' : '조회 결과가 없습니다';
+        var emptyDesc = selectedSource === 'seoul_board'
+          ? '서울시 및 자치구 게시판 조건에 맞는 공고가 없습니다. 검색어나 필터를 바꿔 다시 시도해주세요.'
+          : '검색어 또는 필터 조건을 바꿔 다시 시도해주세요.';
+        body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-inbox"></i><strong>' + esc(emptyTitle) + '</strong><p>' + esc(emptyDesc) + '</p></div></td></tr>';
         document.getElementById('pagination').innerHTML = '';
         return;
       }
