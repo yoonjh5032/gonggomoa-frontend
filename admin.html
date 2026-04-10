@@ -50,6 +50,9 @@
         <button class="admin-menu-btn active" data-section="dashboard">
           <i class="fas fa-chart-pie"></i><span>대시보드</span>
         </button>
+        <button class="admin-menu-btn" data-section="collector-logs">
+          <i class="fas fa-clock-rotate-left"></i><span>수집 실행 이력</span>
+        </button>
         <button class="admin-menu-btn" data-section="members">
           <i class="fas fa-users"></i><span>회원 관리</span>
         </button>
@@ -68,7 +71,7 @@
         <div class="admin-section-head">
           <div>
             <h1>대시보드</h1>
-            <p>회원, 문의, 방문 데이터를 한 화면에서 확인하고 수집기를 수동 실행하거나 실행 이력을 조회할 수 있습니다.</p>
+            <p>회원, 문의, 방문 데이터를 한 화면에서 확인하고 수집기를 수동 실행하거나 최근 실행 이력과 운영 경보를 빠르게 확인할 수 있습니다.</p>
           </div>
         </div>
 
@@ -113,6 +116,24 @@
             <span>현재 실행 중</span>
             <strong id="dash-collectors-running">0</strong>
           </div>
+          <div class="admin-stat-card">
+            <span>24시간 오류</span>
+            <strong id="dash-collector-errors-24h">0</strong>
+          </div>
+          <div class="admin-stat-card">
+            <span>장기 실행 경보</span>
+            <strong id="dash-collectors-stuck">0</strong>
+          </div>
+        </div>
+
+        <div class="admin-panel" style="margin-bottom:20px;">
+          <div class="admin-panel-head">
+            <strong>운영 경보</strong>
+            <span id="collector-alert-updated" class="admin-loading">-</span>
+          </div>
+          <div id="dashboard-collector-alerts" style="padding:16px;">
+            <div class="admin-empty">불러오는 중...</div>
+          </div>
         </div>
 
         <div class="admin-panel" style="margin-bottom:20px;">
@@ -151,6 +172,119 @@
             </div>
             <div id="dashboard-recent-inquiries" style="padding:16px;">
               <div class="admin-empty">불러오는 중...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 수집 실행 이력 -->
+      <section class="admin-section" data-section="collector-logs" style="display:none;">
+        <div class="admin-section-head">
+          <div>
+            <h1>수집 실행 이력</h1>
+            <p>수집기 실행 결과를 조건별로 필터링하고 상세 정보, 실행자, 오류 내용을 확인할 수 있습니다.</p>
+          </div>
+          <div class="admin-head-side" id="collector-log-total-text">총 0건</div>
+        </div>
+
+        <div class="admin-stat-grid">
+          <div class="admin-stat-card">
+            <span>조회 결과</span>
+            <strong id="clog-total">0</strong>
+          </div>
+          <div class="admin-stat-card">
+            <span>성공</span>
+            <strong id="clog-success">0</strong>
+          </div>
+          <div class="admin-stat-card">
+            <span>오류</span>
+            <strong id="clog-error">0</strong>
+          </div>
+          <div class="admin-stat-card">
+            <span>건너뜀</span>
+            <strong id="clog-skipped">0</strong>
+          </div>
+        </div>
+
+        <div class="admin-filter-bar">
+          <select id="collector-log-key-filter" class="admin-filter-input">
+            <option value="all">전체 수집기</option>
+            <option value="g2b_api">나라장터 G2B</option>
+            <option value="seoul_contract">서울 계약마당</option>
+            <option value="local_gov">지자체 공고</option>
+            <option value="purge_expired">만료 공고 삭제</option>
+          </select>
+
+          <select id="collector-log-status-filter" class="admin-filter-input">
+            <option value="all">전체 상태</option>
+            <option value="started">시작</option>
+            <option value="success">성공</option>
+            <option value="error">오류</option>
+            <option value="skipped">건너뜀</option>
+          </select>
+
+          <select id="collector-log-trigger-filter" class="admin-filter-input">
+            <option value="all">전체 실행 유형</option>
+            <option value="manual">수동</option>
+            <option value="scheduled">자동</option>
+            <option value="startup">기동</option>
+            <option value="maintenance">정리</option>
+          </select>
+
+          <input id="collector-log-from" class="admin-filter-input" type="date" title="시작일">
+          <input id="collector-log-to" class="admin-filter-input" type="date" title="종료일">
+
+          <input
+            id="collector-log-search"
+            class="admin-filter-input admin-filter-search"
+            type="text"
+            placeholder="수집기명, 작업명, 실행자, 오류 내용 검색"
+          >
+
+          <button id="collector-log-search-btn" class="admin-primary-btn">
+            <i class="fas fa-magnifying-glass"></i> 조회
+          </button>
+          <button id="collector-log-reset-btn" class="admin-primary-btn" style="background:#6b7280;">
+            <i class="fas fa-rotate-left"></i> 초기화
+          </button>
+        </div>
+
+        <div class="admin-inquiry-grid">
+          <div class="admin-panel">
+            <div class="admin-panel-head">
+              <strong>실행 이력 목록</strong>
+              <span id="collector-log-loading" class="admin-loading" style="display:none;">불러오는 중...</span>
+            </div>
+
+            <div class="admin-table-wrap">
+              <table class="admin-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>시각</th>
+                    <th>수집기</th>
+                    <th>유형</th>
+                    <th>상태</th>
+                    <th>실행자</th>
+                    <th>작업</th>
+                    <th>결과/오류</th>
+                  </tr>
+                </thead>
+                <tbody id="collector-log-tbody">
+                  <tr><td colspan="8"><div class="admin-empty" id="collector-log-empty-top">불러오는 중...</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="admin-pagination" id="collector-log-pagination"></div>
+          </div>
+
+          <div class="admin-panel admin-detail-panel">
+            <div class="admin-panel-head">
+              <strong>실행 이력 상세</strong>
+            </div>
+            <div id="collector-log-detail" class="admin-detail-body">
+              <div class="admin-empty">좌측 목록에서 실행 이력을 선택하세요.</div>
             </div>
           </div>
         </div>
