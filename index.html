@@ -6,7 +6,7 @@
   <link rel="icon" type="image/png" href="/favicon.png">
   <link rel="apple-touch-icon" href="/favicon.png">
   <title>공고모아 - 입찰공고 통합 검색</title>
-  <meta name="description" content="나라장터, 서울시·구청 게시판, 계약마당 공고를 한 곳에서 검색하세요.">
+  <meta name="description" content="나라장터, 서울시, 지자체 입찰공고를 한 곳에서 검색하세요.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/public.css">
@@ -554,7 +554,7 @@
       <span class="src-chip-count" id="src-count-g2b">-</span>
     </a>
     <a href="/notices?source=seoul_board" class="src-chip src-seoul">
-      <i class="fas fa-city"></i> 서울시·구청
+      <i class="fas fa-city"></i> 서울시
       <span class="src-chip-count" id="src-count-seoul">-</span>
     </a>
     <a href="/notices?source=seoul_contract" class="src-chip src-contract">
@@ -625,7 +625,7 @@
       <div class="section-header">
         <h2 class="section-title">
           <i class="fas fa-star" style="color:#f59e0b"></i>
-          관심 키워드
+          관심 키워드 공고
           <span class="section-badge" id="interest-keyword-badge" style="display:none;background:#fff7ed;color:#c2410c"></span>
         </h2>
         <a href="/notices?interest=1" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
@@ -662,7 +662,7 @@
       <div class="src-tab-bar">
         <button class="src-tab active" data-src="">전체</button>
         <button class="src-tab" data-src="g2b_api">나라장터</button>
-        <button class="src-tab" data-src="seoul_board">서울시·구청</button>
+        <button class="src-tab" data-src="seoul_board">서울시</button>
         <button class="src-tab" data-src="seoul_contract">계약마당</button>
       </div>
       <div class="card-grid" id="latest-notices">
@@ -689,7 +689,7 @@
           <span style="width:10px;height:10px;border-radius:3px;background:#dbeafe;display:inline-block"></span>나라장터
         </span>
         <span style="display:flex;align-items:center;gap:5px;font-size:.75rem;color:#6b7280">
-          <span style="width:10px;height:10px;border-radius:3px;background:#d1fae5;display:inline-block"></span>서울시·구청
+          <span style="width:10px;height:10px;border-radius:3px;background:#d1fae5;display:inline-block"></span>서울시
         </span>
         <span style="display:flex;align-items:center;gap:5px;font-size:.75rem;color:#6b7280">
           <span style="width:10px;height:10px;border-radius:3px;background:#ffedd5;display:inline-block"></span>계약마당
@@ -748,7 +748,7 @@
 <footer class="pub-footer">
   <div class="pub-footer-inner">
     <div class="footer-logo"><i class="fas fa-building-columns"></i> 공고모아</div>
-    <p class="footer-desc">나라장터·서울시·구청 게시판·계약마당 공고 통합 검색 서비스</p>
+    <p class="footer-desc">나라장터·서울시·지자체 입찰공고 통합 검색 서비스</p>
     <p class="footer-copy">데이터 출처: 공공데이터포털 조달청_나라장터, 서울특별시</p>
   </div>
 </footer>
@@ -840,12 +840,16 @@
       .replace(/"/g,'&quot;');
   }
 
-  function srcLabel(src) {
+  function srcLabel(itemOrSource) {
+    if (itemOrSource && typeof itemOrSource === 'object') {
+      if (itemOrSource.source_label) return itemOrSource.source_label;
+      itemOrSource = itemOrSource.source_system;
+    }
     return {
       g2b_api:'나라장터',
-      seoul_board:'서울시·구청',
+      seoul_board:'서울시',
       seoul_contract:'계약마당'
-    }[src] || src;
+    }[itemOrSource] || itemOrSource;
   }
 
   function normalizeKeywords(list) {
@@ -933,7 +937,7 @@
 
     return '<div class="notice-card js-go-detail' + (urgent ? ' card-urgent' : '') + '" data-id="' + escAttr(n.id) + '" data-url="' + escAttr(n.detail_url || '') + '">' +
       '<div class="card-top">' +
-        '<span class="card-src src-' + src + '">' + srcLabel(src) + '</span>' +
+        '<span class="card-src src-' + src + '">' + esc(srcLabel(n)) + '</span>' +
         '<span class="card-type type-' + esc(n.notice_type||'') + '">' + esc(n.notice_type||'') + '</span>' +
         daysLeftHtml(n.closing_at) +
       '</div>' +
@@ -1172,7 +1176,6 @@
     var firstDay = new Date(calYear, calMonth - 1, 1).getDay();
     var lastDate = new Date(calYear, calMonth, 0).getDate();
     var srcClass = { g2b_api:'g2b', seoul_board:'seoul', seoul_contract:'contract' };
-    var srcName  = { g2b_api:'나라장터', seoul_board:'서울시·구청', seoul_contract:'계약마당' };
 
     var html = '';
     var monthTotal = 0;
@@ -1211,8 +1214,10 @@
       notices.forEach(function(n) {
         var sc = srcClass[n.source_system];
         if (!sc) return;
-        if (!groupMap[sc]) groupMap[sc] = { cls: sc, label: srcName[n.source_system], cnt: 0 };
-        groupMap[sc].cnt++;
+        var label = srcLabel(n);
+        var key = sc + '::' + label;
+        if (!groupMap[key]) groupMap[key] = { cls: sc, label: label, cnt: 0 };
+        groupMap[key].cnt++;
       });
 
       var groups = Object.values(groupMap);
@@ -1304,7 +1309,7 @@
 
       return '<div class="cal-notice-row js-go-detail" data-id="' + escAttr(n.id) + '" data-url="' + escAttr(n.detail_url || '') + '">' +
         '<div class="cal-notice-row-top">' +
-          '<span class="cal-src-tag ' + (n.source_system||'') + '">' + srcLabel(n.source_system) + '</span>' +
+          '<span class="cal-src-tag ' + (n.source_system||'') + '">' + esc(srcLabel(n)) + '</span>' +
           '<span class="cal-notice-type">' + esc(n.notice_type||'') + '</span>' +
           ddayLabel(nDiff) +
         '</div>' +
