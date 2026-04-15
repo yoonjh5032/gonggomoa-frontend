@@ -289,8 +289,16 @@
       .replace(/>/g, '&gt;');
   }
 
-  function srcLabel(s) {
-    return {g2b_api:'나라장터',seoul_board:'서울시·구청',seoul_contract:'계약마당'}[s] || s;
+  function srcLabel(itemOrSource) {
+    if (itemOrSource && typeof itemOrSource === 'object') {
+      if (itemOrSource.source_label) {
+        return String(itemOrSource.source_label).indexOf('서울시·') === 0
+          ? itemOrSource.source_label
+          : '서울시·' + itemOrSource.source_label;
+      }
+      itemOrSource = itemOrSource.source_system;
+    }
+    return {g2b_api:'나라장터',seoul_board:'서울시·구청',seoul_contract:'계약마당'}[itemOrSource] || itemOrSource;
   }
 
   function normalizeKeywords(list) {
@@ -527,7 +535,7 @@
       body.innerHTML = list.map(function(n) {
         var close = formatKstDate(n.closing_at);
         return '<tr>' +
-          '<td><span class="src-tag ' + (n.source_system||'') + '">' + srcLabel(n.source_system) + '</span></td>' +
+          '<td><span class="src-tag ' + (n.source_system||'') + '">' + esc(srcLabel(n)) + '</span></td>' +
           '<td><span class="type-tag">' + esc(n.notice_type || '') + '</span></td>' +
           '<td class="title-cell js-notice-link" data-id="' + escAttr(n.id) + '" data-url="' + escAttr(n.detail_url || '') + '">' + esc(n.title) + '</td>' +
           '<td>' + esc(n.issuing_org || '') + '</td>' +
