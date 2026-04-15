@@ -343,6 +343,7 @@
     .cal-src-tag.g2b_api        { background: #dbeafe; color: #1d4ed8; }
     .cal-src-tag.seoul_board    { background: #d1fae5; color: #065f46; }
     .cal-src-tag.seoul_contract { background: #ffedd5; color: #9a3412; }
+    .cal-src-tag.province_gov   { background: #ede9fe; color: #5b21b6; }
     .cal-notice-type {
       font-size: .68rem;
       color: #6b7280;
@@ -554,8 +555,12 @@
       <span class="src-chip-count" id="src-count-g2b">-</span>
     </a>
     <a href="/notices?source=seoul_board" class="src-chip src-seoul">
-      <i class="fas fa-city"></i> 서울시
+      <i class="fas fa-city"></i> 서울시·구청
       <span class="src-chip-count" id="src-count-seoul">-</span>
+    </a>
+    <a href="/notices?source=province_gov" class="src-chip src-province">
+      <i class="fas fa-map"></i> 지방·도청
+      <span class="src-chip-count" id="src-count-province">-</span>
     </a>
     <a href="/notices?source=seoul_contract" class="src-chip src-contract">
       <i class="fas fa-file-contract"></i> 계약마당
@@ -662,7 +667,8 @@
       <div class="src-tab-bar">
         <button class="src-tab active" data-src="">전체</button>
         <button class="src-tab" data-src="g2b_api">나라장터</button>
-        <button class="src-tab" data-src="seoul_board">서울시</button>
+        <button class="src-tab" data-src="seoul_board">서울시·구청</button>
+        <button class="src-tab" data-src="province_gov">지방·도청</button>
         <button class="src-tab" data-src="seoul_contract">계약마당</button>
       </div>
       <div class="card-grid" id="latest-notices">
@@ -689,7 +695,10 @@
           <span style="width:10px;height:10px;border-radius:3px;background:#dbeafe;display:inline-block"></span>나라장터
         </span>
         <span style="display:flex;align-items:center;gap:5px;font-size:.75rem;color:#6b7280">
-          <span style="width:10px;height:10px;border-radius:3px;background:#d1fae5;display:inline-block"></span>서울시
+          <span style="width:10px;height:10px;border-radius:3px;background:#d1fae5;display:inline-block"></span>서울시·구청
+        </span>
+        <span style="display:flex;align-items:center;gap:5px;font-size:.75rem;color:#6b7280">
+          <span style="width:10px;height:10px;border-radius:3px;background:#ede9fe;display:inline-block"></span>지방·도청
         </span>
         <span style="display:flex;align-items:center;gap:5px;font-size:.75rem;color:#6b7280">
           <span style="width:10px;height:10px;border-radius:3px;background:#ffedd5;display:inline-block"></span>계약마당
@@ -840,16 +849,13 @@
       .replace(/"/g,'&quot;');
   }
 
-  function srcLabel(itemOrSource) {
-    if (itemOrSource && typeof itemOrSource === 'object') {
-      if (itemOrSource.source_label) return itemOrSource.source_label;
-      itemOrSource = itemOrSource.source_system;
-    }
+  function srcLabel(src) {
     return {
       g2b_api:'나라장터',
-      seoul_board:'서울시',
+      seoul_board:'서울시·구청',
+      province_gov:'지방·도청',
       seoul_contract:'계약마당'
-    }[itemOrSource] || itemOrSource;
+    }[src] || src;
   }
 
   function normalizeKeywords(list) {
@@ -937,7 +943,7 @@
 
     return '<div class="notice-card js-go-detail' + (urgent ? ' card-urgent' : '') + '" data-id="' + escAttr(n.id) + '" data-url="' + escAttr(n.detail_url || '') + '">' +
       '<div class="card-top">' +
-        '<span class="card-src src-' + src + '">' + esc(srcLabel(n)) + '</span>' +
+        '<span class="card-src src-' + src + '">' + srcLabel(src) + '</span>' +
         '<span class="card-type type-' + esc(n.notice_type||'') + '">' + esc(n.notice_type||'') + '</span>' +
         daysLeftHtml(n.closing_at) +
       '</div>' +
@@ -1028,6 +1034,7 @@
       var s = await PublicAPI.getStats();
       document.getElementById('src-count-g2b').textContent      = s.g2b || 0;
       document.getElementById('src-count-seoul').textContent    = s.seoul || 0;
+      document.getElementById('src-count-province').textContent = s.province || 0;
       document.getElementById('src-count-contract').textContent = s.contract || 0;
       document.getElementById('src-count-total').textContent    = s.total || 0;
     } catch(e) {}
@@ -1175,7 +1182,8 @@
     var today = getKstTodayYmd();
     var firstDay = new Date(calYear, calMonth - 1, 1).getDay();
     var lastDate = new Date(calYear, calMonth, 0).getDate();
-    var srcClass = { g2b_api:'g2b', seoul_board:'seoul', seoul_contract:'contract' };
+    var srcClass = { g2b_api:'g2b', seoul_board:'seoul', province_gov:'province', seoul_contract:'contract' };
+    var srcName  = { g2b_api:'나라장터', seoul_board:'서울시·구청', province_gov:'지방·도청', seoul_contract:'계약마당' };
 
     var html = '';
     var monthTotal = 0;
@@ -1214,10 +1222,8 @@
       notices.forEach(function(n) {
         var sc = srcClass[n.source_system];
         if (!sc) return;
-        var label = srcLabel(n);
-        var key = sc + '::' + label;
-        if (!groupMap[key]) groupMap[key] = { cls: sc, label: label, cnt: 0 };
-        groupMap[key].cnt++;
+        if (!groupMap[sc]) groupMap[sc] = { cls: sc, label: srcName[n.source_system], cnt: 0 };
+        groupMap[sc].cnt++;
       });
 
       var groups = Object.values(groupMap);
@@ -1309,7 +1315,7 @@
 
       return '<div class="cal-notice-row js-go-detail" data-id="' + escAttr(n.id) + '" data-url="' + escAttr(n.detail_url || '') + '">' +
         '<div class="cal-notice-row-top">' +
-          '<span class="cal-src-tag ' + (n.source_system||'') + '">' + esc(srcLabel(n)) + '</span>' +
+          '<span class="cal-src-tag ' + (n.source_system||'') + '">' + srcLabel(n.source_system) + '</span>' +
           '<span class="cal-notice-type">' + esc(n.notice_type||'') + '</span>' +
           ddayLabel(nDiff) +
         '</div>' +
