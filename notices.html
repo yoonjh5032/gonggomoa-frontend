@@ -28,6 +28,23 @@
     }
     .filter-btn:hover { opacity:.9; }
 
+    .issuer-chip-wrap { margin:-6px 0 18px; }
+    .issuer-chip-title { font-size:.78rem; font-weight:700; color:#64748b; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+    .issuer-chip-list { display:flex; flex-wrap:wrap; gap:10px; }
+    .issuer-chip {
+      border:none; cursor:pointer; font-family:inherit; font-size:.82rem; font-weight:700;
+      padding:9px 15px; border-radius:999px; color:#5b6db5;
+      background:linear-gradient(180deg, #e9eeff 0%, #dbe5ff 100%);
+      box-shadow:0 3px 10px rgba(59,130,246,.14), inset 0 1px 0 rgba(255,255,255,.9);
+      transition:transform .15s, box-shadow .15s, background .15s, color .15s;
+    }
+    .issuer-chip:hover { transform:translateY(-1px); box-shadow:0 5px 14px rgba(59,130,246,.18), inset 0 1px 0 rgba(255,255,255,.95); }
+    .issuer-chip.active {
+      color:#fff;
+      background:linear-gradient(180deg, #8ea2f2 0%, #6f84e8 100%);
+      box-shadow:0 6px 16px rgba(79,70,229,.28), inset 0 1px 0 rgba(255,255,255,.25);
+    }
+
     .notice-table { width:100%; border-collapse:collapse; }
     .notice-table th {
       background:#f9fafb; padding:10px 12px; text-align:left;
@@ -143,6 +160,30 @@
     >
       관심 공고 키워드만
     </button>
+  </div>
+
+  <div class="issuer-chip-wrap">
+    <div class="issuer-chip-title"><i class="fas fa-location-dot" style="color:#6d7fe6"></i> 공고기관 빠른 필터</div>
+    <div class="issuer-chip-list" id="issuer-chip-list">
+      <button type="button" class="issuer-chip active" data-keyword="">전체</button>
+      <button type="button" class="issuer-chip" data-keyword="서울특별시">서울</button>
+      <button type="button" class="issuer-chip" data-keyword="경기도">경기</button>
+      <button type="button" class="issuer-chip" data-keyword="인천광역시">인천</button>
+      <button type="button" class="issuer-chip" data-keyword="부산광역시">부산</button>
+      <button type="button" class="issuer-chip" data-keyword="대구광역시">대구</button>
+      <button type="button" class="issuer-chip" data-keyword="광주광역시">광주</button>
+      <button type="button" class="issuer-chip" data-keyword="대전광역시">대전</button>
+      <button type="button" class="issuer-chip" data-keyword="울산광역시">울산</button>
+      <button type="button" class="issuer-chip" data-keyword="세종특별자치시">세종</button>
+      <button type="button" class="issuer-chip" data-keyword="강원특별자치도">강원</button>
+      <button type="button" class="issuer-chip" data-keyword="충청북도">충북</button>
+      <button type="button" class="issuer-chip" data-keyword="충청남도">충남</button>
+      <button type="button" class="issuer-chip" data-keyword="전북특별자치도">전북</button>
+      <button type="button" class="issuer-chip" data-keyword="전라남도">전남</button>
+      <button type="button" class="issuer-chip" data-keyword="경상북도">경북</button>
+      <button type="button" class="issuer-chip" data-keyword="경상남도">경남</button>
+      <button type="button" class="issuer-chip" data-keyword="제주특별자치도">제주</button>
+    </div>
   </div>
 
   <!-- 테이블 -->
@@ -277,6 +318,25 @@
     if (e.key === 'Enter') loadPage(1);
   });
 
+  function getIssuerChipButtons() {
+    return Array.prototype.slice.call(document.querySelectorAll('.issuer-chip'));
+  }
+
+  function updateIssuerChipUi() {
+    var keyword = (document.getElementById('f-search').value || '').trim();
+    getIssuerChipButtons().forEach(function(btn) {
+      var chipKeyword = String(btn.dataset.keyword || '').trim();
+      var active = chipKeyword ? keyword === chipKeyword : !keyword;
+      btn.classList.toggle('active', active);
+    });
+  }
+
+  function applyIssuerChip(keyword) {
+    document.getElementById('f-search').value = keyword || '';
+    updateIssuerChipUi();
+    loadPage(1);
+  }
+
   function esc(s) {
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
@@ -384,6 +444,7 @@
         interestKeywords = [];
         params.delete('deadline');
         updateInterestUi();
+        updateIssuerChipUi();
         loadPage(1);
       });
     }
@@ -476,6 +537,7 @@
   window.loadPage = async function(page) {
     currentPage = page;
     updateInterestUi();
+    updateIssuerChipUi();
     syncUrl(page);
 
     var body = document.getElementById('table-body');
@@ -581,7 +643,15 @@
     }
   };
 
+  document.getElementById('f-search').addEventListener('input', updateIssuerChipUi);
+  getIssuerChipButtons().forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      applyIssuerChip(btn.dataset.keyword || '');
+    });
+  });
+
   updateInterestUi();
+  updateIssuerChipUi();
   loadPage(1);
 })();
 </script>
