@@ -558,7 +558,7 @@
       <i class="fas fa-city"></i> 서울시·구청
       <span class="src-chip-count" id="src-count-seoul">-</span>
     </a>
-    <a href="/notices?source=province_gov" class="src-chip src-province">
+    <a href="/notices?source=province_gov" class="src-chip src-province" onclick="window.location.href='/notices?source=province_gov';return false;">
       <i class="fas fa-map"></i> 지방·도청
       <span class="src-chip-count" id="src-count-province">-</span>
     </a>
@@ -625,12 +625,12 @@
       </a>
     </section>
 
-    <!-- 관심 키워드 공고 -->
+    <!-- 관심 공고 키워드 -->
     <section class="section-block" id="interest-keyword-section" style="display:none">
       <div class="section-header">
         <h2 class="section-title">
           <i class="fas fa-star" style="color:#f59e0b"></i>
-          관심 키워드 공고
+          관심 공고 키워드
           <span class="section-badge" id="interest-keyword-badge" style="display:none;background:#fff7ed;color:#c2410c"></span>
         </h2>
         <a href="/notices?interest=1" class="section-more">전체보기 <i class="fas fa-arrow-right"></i></a>
@@ -1088,10 +1088,10 @@
       var list = resp.data || [];
       listEl.innerHTML = list.length
         ? list.map(function(n){ return renderCard(n); }).join('')
-        : emptyMsg('관심 키워드와 일치하는 공고가 없습니다');
+        : emptyMsg('관심 공고 키워드와 일치하는 공고가 없습니다');
     } catch(e) {
       section.style.display = '';
-      listEl.innerHTML = emptyMsg('관심 키워드 공고를 불러올 수 없습니다');
+      listEl.innerHTML = emptyMsg('관심 공고 키워드를 불러올 수 없습니다');
     }
   }
 
