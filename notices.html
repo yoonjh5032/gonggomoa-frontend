@@ -163,27 +163,8 @@
   </div>
 
   <div class="issuer-chip-wrap">
-    <div class="issuer-chip-title"><i class="fas fa-location-dot" style="color:#6d7fe6"></i> 공고기관 빠른 필터</div>
-    <div class="issuer-chip-list" id="issuer-chip-list">
-      <button type="button" class="issuer-chip active" data-keyword="">전체</button>
-      <button type="button" class="issuer-chip" data-keyword="서울특별시">서울</button>
-      <button type="button" class="issuer-chip" data-keyword="경기도">경기</button>
-      <button type="button" class="issuer-chip" data-keyword="인천광역시">인천</button>
-      <button type="button" class="issuer-chip" data-keyword="부산광역시">부산</button>
-      <button type="button" class="issuer-chip" data-keyword="대구광역시">대구</button>
-      <button type="button" class="issuer-chip" data-keyword="광주광역시">광주</button>
-      <button type="button" class="issuer-chip" data-keyword="대전광역시">대전</button>
-      <button type="button" class="issuer-chip" data-keyword="울산광역시">울산</button>
-      <button type="button" class="issuer-chip" data-keyword="세종특별자치시">세종</button>
-      <button type="button" class="issuer-chip" data-keyword="강원특별자치도">강원</button>
-      <button type="button" class="issuer-chip" data-keyword="충청북도">충북</button>
-      <button type="button" class="issuer-chip" data-keyword="충청남도">충남</button>
-      <button type="button" class="issuer-chip" data-keyword="전북특별자치도">전북</button>
-      <button type="button" class="issuer-chip" data-keyword="전라남도">전남</button>
-      <button type="button" class="issuer-chip" data-keyword="경상북도">경북</button>
-      <button type="button" class="issuer-chip" data-keyword="경상남도">경남</button>
-      <button type="button" class="issuer-chip" data-keyword="제주특별자치도">제주</button>
-    </div>
+    <div class="issuer-chip-title" id="issuer-chip-title"><i class="fas fa-location-dot" style="color:#6d7fe6"></i> 공고기관 빠른 필터</div>
+    <div class="issuer-chip-list" id="issuer-chip-list"></div>
   </div>
 
   <!-- 테이블 -->
@@ -318,23 +299,94 @@
     if (e.key === 'Enter') loadPage(1);
   });
 
+  var REGION_CHIPS = [
+    { label: '전체', keyword: '' },
+    { label: '서울', keyword: '서울특별시' },
+    { label: '경기', keyword: '경기도' },
+    { label: '인천', keyword: '인천광역시' },
+    { label: '부산', keyword: '부산광역시' },
+    { label: '대구', keyword: '대구광역시' },
+    { label: '광주', keyword: '광주광역시' },
+    { label: '대전', keyword: '대전광역시' },
+    { label: '울산', keyword: '울산광역시' },
+    { label: '세종', keyword: '세종특별자치시' },
+    { label: '강원', keyword: '강원특별자치도' },
+    { label: '충북', keyword: '충청북도' },
+    { label: '충남', keyword: '충청남도' },
+    { label: '전북', keyword: '전북특별자치도' },
+    { label: '전남', keyword: '전라남도' },
+    { label: '경북', keyword: '경상북도' },
+    { label: '경남', keyword: '경상남도' },
+    { label: '제주', keyword: '제주특별자치도' }
+  ];
+
+  var SEOUL_DISTRICT_CHIPS = [
+    { label: '전체', district: '' },
+    { label: '관악구', district: '관악구' },
+    { label: '강북구', district: '강북구' },
+    { label: '구로구', district: '구로구' },
+    { label: '서대문구', district: '서대문구' },
+    { label: '서초구', district: '서초구' },
+    { label: '용산구', district: '용산구' },
+    { label: '중랑구', district: '중랑구' },
+    { label: '강서구', district: '강서구' }
+  ];
+
+  var selectedDistrict = params.get('district') || '';
+
+  function isSeoulBoardMode() {
+    return document.getElementById('f-source').value === 'seoul_board';
+  }
+
   function getIssuerChipButtons() {
     return Array.prototype.slice.call(document.querySelectorAll('.issuer-chip'));
+  }
+
+  function renderIssuerChips() {
+    var listEl = document.getElementById('issuer-chip-list');
+    var titleEl = document.getElementById('issuer-chip-title');
+    if (!listEl || !titleEl) return;
+
+    var chips = isSeoulBoardMode() ? SEOUL_DISTRICT_CHIPS : REGION_CHIPS;
+    titleEl.innerHTML = isSeoulBoardMode()
+      ? '<i class="fas fa-location-dot" style="color:#6d7fe6"></i> 구청 빠른 필터'
+      : '<i class="fas fa-location-dot" style="color:#6d7fe6"></i> 공고기관 빠른 필터';
+
+    listEl.innerHTML = chips.map(function(chip) {
+      var value = isSeoulBoardMode() ? (chip.district || '') : (chip.keyword || '');
+      return '<button type="button" class="issuer-chip" data-value="' + escAttr(value) + '">' + esc(chip.label) + '</button>';
+    }).join('');
   }
 
   function updateIssuerChipUi() {
     var keyword = (document.getElementById('f-search').value || '').trim();
     getIssuerChipButtons().forEach(function(btn) {
-      var chipKeyword = String(btn.dataset.keyword || '').trim();
-      var active = chipKeyword ? keyword === chipKeyword : !keyword;
+      var value = String(btn.dataset.value || '').trim();
+      var active = isSeoulBoardMode() ? (value ? selectedDistrict === value : !selectedDistrict) : (value ? keyword === value : !keyword);
       btn.classList.toggle('active', active);
     });
   }
 
-  function applyIssuerChip(keyword) {
-    document.getElementById('f-search').value = keyword || '';
+  function bindIssuerChipEvents() {
+    getIssuerChipButtons().forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (isSeoulBoardMode()) {
+          selectedDistrict = btn.dataset.value || '';
+        } else {
+          document.getElementById('f-search').value = btn.dataset.value || '';
+          selectedDistrict = '';
+        }
+        updateIssuerChipUi();
+        loadPage(1);
+      });
+    });
+  }
+
+  function refreshIssuerChipSection() {
+    if (!isSeoulBoardMode()) selectedDistrict = '';
+    renderIssuerChips();
+    bindIssuerChipEvents();
     updateIssuerChipUi();
-    loadPage(1);
   }
 
   function esc(s) {
@@ -442,9 +494,10 @@
         document.getElementById('f-sort').value = 'recent';
         interestMode = false;
         interestKeywords = [];
+        selectedDistrict = '';
         params.delete('deadline');
         updateInterestUi();
-        updateIssuerChipUi();
+        refreshIssuerChipSection();
         loadPage(1);
       });
     }
@@ -501,6 +554,7 @@
 
     if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
     if (source) url.searchParams.set('source', source); else url.searchParams.delete('source');
+    if (source === 'seoul_board' && selectedDistrict) url.searchParams.set('district', selectedDistrict); else url.searchParams.delete('district');
     if (type) url.searchParams.set('type', type); else url.searchParams.delete('type');
     if (sortBy && sortBy !== 'recent') url.searchParams.set('sortBy', sortBy); else url.searchParams.delete('sortBy');
 
@@ -560,16 +614,20 @@
         }
       }
 
-      var resp = await PublicAPI.getNotices({
-        q:        document.getElementById('f-search').value.trim(),
-        source:   document.getElementById('f-source').value,
-        type:     document.getElementById('f-type').value,
-        sortBy:   document.getElementById('f-sort').value,
-        daysLeft: params.get('deadline') || '',
-        keywords: keywordList,
-        limit:    limit,
-        page:     page
-      });
+      var qs = new URLSearchParams();
+      var currentSource = document.getElementById('f-source').value;
+      var currentSearch = document.getElementById('f-search').value.trim();
+      if (currentSearch) qs.set('q', currentSearch);
+      if (currentSource) qs.set('source', currentSource);
+      if (currentSource === 'seoul_board' && selectedDistrict) qs.set('district', selectedDistrict);
+      if (document.getElementById('f-type').value) qs.set('type', document.getElementById('f-type').value);
+      if (document.getElementById('f-sort').value) qs.set('sortBy', document.getElementById('f-sort').value);
+      if (params.get('deadline')) qs.set('daysLeft', params.get('deadline'));
+      if (keywordList && keywordList.length) qs.set('keywords', keywordList.join(','));
+      qs.set('limit', limit);
+      qs.set('page', page);
+
+      var resp = await PublicAPI.request('GET', '/notices?' + qs.toString());
 
       var list  = resp.data || [];
       var total = resp.total || 0;
@@ -580,7 +638,7 @@
         var selectedSource = document.getElementById('f-source').value;
         var emptyTitle = selectedSource === 'seoul_board' ? '서울시·구청 게시판 공고가 없습니다' : '조회 결과가 없습니다';
         var emptyDesc = selectedSource === 'seoul_board'
-          ? '서울시 및 자치구 게시판 조건에 맞는 공고가 없습니다. 검색어나 필터를 바꿔 다시 시도해주세요.'
+          ? '선택한 구청 또는 검색 조건에 맞는 공고가 없습니다. 필터를 바꿔 다시 시도해주세요.'
           : '검색어 또는 필터 조건을 바꿔 다시 시도해주세요.';
         body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="fas fa-inbox"></i><strong>' + esc(emptyTitle) + '</strong><p>' + esc(emptyDesc) + '</p></div></td></tr>';
         document.getElementById('pagination').innerHTML = '';
@@ -643,15 +701,16 @@
     }
   };
 
-  document.getElementById('f-search').addEventListener('input', updateIssuerChipUi);
-  getIssuerChipButtons().forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      applyIssuerChip(btn.dataset.keyword || '');
-    });
+  document.getElementById('f-search').addEventListener('input', function() {
+    if (!isSeoulBoardMode()) updateIssuerChipUi();
+  });
+  document.getElementById('f-source').addEventListener('change', function() {
+    refreshIssuerChipSection();
+    loadPage(1);
   });
 
   updateInterestUi();
-  updateIssuerChipUi();
+  refreshIssuerChipSection();
   loadPage(1);
 })();
 </script>
