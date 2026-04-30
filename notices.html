@@ -119,6 +119,7 @@
       <option value="">전체 출처</option>
       <option value="g2b_api">나라장터</option>
       <option value="seoul_board">서울시·구청</option>
+      <option value="province_gov">지방·도청</option>
       <option value="seoul_contract">계약마당</option>
     </select>
     <select id="f-type">
@@ -140,7 +141,7 @@
       onclick="toggleInterestMode()"
       style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa"
     >
-      관심키워드만
+      관심 공고 키워드만
     </button>
   </div>
 
@@ -289,16 +290,8 @@
       .replace(/>/g, '&gt;');
   }
 
-  function srcLabel(itemOrSource) {
-    if (itemOrSource && typeof itemOrSource === 'object') {
-      if (itemOrSource.source_label) {
-        return String(itemOrSource.source_label).indexOf('서울시·') === 0
-          ? itemOrSource.source_label
-          : '서울시·' + itemOrSource.source_label;
-      }
-      itemOrSource = itemOrSource.source_system;
-    }
-    return {g2b_api:'나라장터',seoul_board:'서울시·구청',seoul_contract:'계약마당'}[itemOrSource] || itemOrSource;
+  function srcLabel(s) {
+    return {g2b_api:'나라장터',seoul_board:'서울시·구청',province_gov:'지방·도청',seoul_contract:'계약마당'}[s] || s;
   }
 
   function normalizeKeywords(list) {
@@ -425,12 +418,12 @@
 
     if (titleEl) {
       titleEl.innerHTML = interestMode
-        ? '<i class="fas fa-star" style="color:#f59e0b"></i> 관심 키워드 공고'
+        ? '<i class="fas fa-star" style="color:#f59e0b"></i> 관심 공고 키워드'
         : '<i class="fas fa-list-ul" style="color:#3b82f6"></i> 전체 공고';
     }
 
     if (btnEl) {
-      btnEl.textContent = interestMode ? '관심키워드 해제' : '관심키워드만';
+      btnEl.textContent = interestMode ? '관심 공고 키워드 해제' : '관심 공고 키워드만';
       btnEl.style.background = interestMode ? '#c2410c' : '#fff7ed';
       btnEl.style.color = interestMode ? '#fff' : '#c2410c';
       btnEl.style.border = interestMode ? '1px solid #c2410c' : '1px solid #fed7aa';
@@ -493,7 +486,7 @@
 
       if (interestMode) {
         if (!PublicAuth || !PublicAuth.isLoggedIn()) {
-          setEmpty('<i class="fas fa-lock"></i><strong>로그인이 필요합니다</strong><p>로그인 후 관심 키워드 공고를 볼 수 있습니다.</p>');
+          setEmpty('<i class="fas fa-lock"></i><strong>로그인이 필요합니다</strong><p>로그인 후 관심 공고 키워드를 볼 수 있습니다.</p>');
           return;
         }
 
@@ -535,7 +528,7 @@
       body.innerHTML = list.map(function(n) {
         var close = formatKstDate(n.closing_at);
         return '<tr>' +
-          '<td><span class="src-tag ' + (n.source_system||'') + '">' + esc(srcLabel(n)) + '</span></td>' +
+          '<td><span class="src-tag ' + (n.source_system||'') + '">' + srcLabel(n.source_system) + '</span></td>' +
           '<td><span class="type-tag">' + esc(n.notice_type || '') + '</span></td>' +
           '<td class="title-cell js-notice-link" data-id="' + escAttr(n.id) + '" data-url="' + escAttr(n.detail_url || '') + '">' + esc(n.title) + '</td>' +
           '<td>' + esc(n.issuing_org || '') + '</td>' +
